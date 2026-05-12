@@ -116,13 +116,15 @@ if run:
 
     with st.spinner(f'Drawing {selected_analysis}...'):
         try:
+            fig: plt.Figure
             if selected_analysis == 'Passing Network':
                 fig = draw_passing_network(events, selected_team, match_label)
             elif selected_analysis == 'Heat Map':
+                assert selected_player is not None
                 fig = draw_heat_map(events, selected_player, selected_team, match_label)
             elif selected_analysis == 'Shot Map':
                 fig = draw_shot_map(events, selected_team, match_label)
-            elif selected_analysis == 'Press Map':
+            else:
                 fig = draw_press_map(events, selected_team, match_label)
 
             st.pyplot(fig)
