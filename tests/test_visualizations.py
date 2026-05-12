@@ -9,10 +9,12 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+import io
 import pytest
 import matplotlib
 matplotlib.use('Agg')   # non-interactive backend — no pop-up windows during tests
 import matplotlib.pyplot as plt
+from PIL import Image
 from statsbombpy import sb
 import warnings
 warnings.filterwarnings('ignore')
@@ -21,6 +23,7 @@ from passing_network import draw_passing_network
 from heat_map import draw_heat_map
 from shot_map import draw_shot_map
 from press_map import draw_press_map
+from image_utils import stitch_figures
 
 MATCH_LABEL = 'Arsenal 4–2 Liverpool | Premier League 2003/04'
 
@@ -57,4 +60,27 @@ def test_draw_shot_map_returns_figure(events):
 def test_draw_press_map_returns_figure(events):
     fig = draw_press_map(events, 'Arsenal', MATCH_LABEL)
     assert isinstance(fig, plt.Figure)
+    plt.close(fig)
+
+
+def test_stitch_figures_returns_valid_png(events):
+    fig1 = draw_passing_network(events, 'Arsenal', MATCH_LABEL)
+    fig2 = draw_shot_map(events, 'Arsenal', MATCH_LABEL)
+    combined = stitch_figures([fig1, fig2])
+    single = stitch_figures([fig1])
+    assert isinstance(combined, bytes)
+    combined_img = Image.open(io.BytesIO(combined))
+    single_img = Image.open(io.BytesIO(single))
+    assert combined_img.format == 'PNG'
+    assert combined_img.width > single_img.width
+    plt.close(fig1)
+    plt.close(fig2)
+
+
+def test_stitch_single_figure_returns_valid_png(events):
+    fig = draw_passing_network(events, 'Arsenal', MATCH_LABEL)
+    result = stitch_figures([fig])
+    assert isinstance(result, bytes)
+    img = Image.open(io.BytesIO(result))
+    assert img.format == 'PNG'
     plt.close(fig)
