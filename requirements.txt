@@ -4,3 +4,5 @@ pandas
 numpy
 matplotlib
 Pillow
+streamlit
+pytest
