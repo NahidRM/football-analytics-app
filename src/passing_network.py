@@ -30,7 +30,7 @@ def draw_passing_network(
     events: pd.DataFrame,
     team: str,
     match_label: str,
-    display_name_overrides: dict = None
+    display_name_overrides: dict | None = None
 ) -> plt.Figure:
     """
     Build and return a passing network figure for the given team.
@@ -52,10 +52,6 @@ def draw_passing_network(
     tactics = lineup_event.iloc[0]['tactics']
     formation = tactics['formation']
     starting_xi = [p['player']['name'] for p in tactics['lineup']]
-    goalkeeper = next(
-        p['player']['name'] for p in tactics['lineup']
-        if p['position']['name'] == 'Goalkeeper'
-    )
 
     # First substitution
     subs = events[(events['type'] == 'Substitution') & (events['team'] == team)]
