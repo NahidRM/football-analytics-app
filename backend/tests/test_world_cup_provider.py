@@ -82,10 +82,21 @@ def test_get_stat_value():
 
 def test_get_shot_data_returns_none_on_fbref_failure():
     provider = WorldCupProvider.__new__(WorldCupProvider)
-    # When soccerdata raises any exception, should return None gracefully
-    with patch("backend.providers.world_cup.WorldCupProvider.get_shot_data", side_effect=Exception("FBref unavailable")):
-        with pytest.raises(Exception):
-            provider.get_shot_data("12345")
-    # Direct test: _parse_fbref_shots returns None on bad data
+    import sys
+    # Temporarily hide soccerdata from sys.modules so the import fails
+    original = sys.modules.pop("soccerdata", None)
+    sys.modules["soccerdata"] = None  # type: ignore — forces ImportError on import
+    try:
+        result = provider.get_shot_data("12345")
+        assert result is None
+    finally:
+        if original is not None:
+            sys.modules["soccerdata"] = original
+        else:
+            sys.modules.pop("soccerdata", None)
+
+
+def test_parse_fbref_shots_returns_none_on_none_input():
+    provider = WorldCupProvider.__new__(WorldCupProvider)
     result = provider._parse_fbref_shots(None, "12345")
     assert result is None

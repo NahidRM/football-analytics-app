@@ -74,7 +74,7 @@ class WorldCupProvider(DataProvider):
 
         def _extract(team: str) -> TeamStats:
             s = team_stats.get(team, [])
-            poss_raw = self._get_stat(s, "Ball Possession", str, "0")
+            poss_raw = self._get_stat(s, "Ball Possession", str, 0)
             poss = float(str(poss_raw).replace("%", "").strip() or "0")
             return TeamStats(
                 possession=poss,
