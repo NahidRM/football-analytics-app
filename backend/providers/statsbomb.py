@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -50,16 +51,23 @@ class StatsBombProvider(DataProvider):
                         away_score=int(row["away_score"]),
                         date=str(row["match_date"])[:10],
                     ))
-            except Exception:
+            except Exception as e:
+                logging.warning("Skipping competition %s/%s: %s", comp_id, season_id, e)
                 continue
         rows.sort(key=lambda m: m.date, reverse=True)
         return rows
 
     def get_match_stats(self, match_id: str) -> MatchStats:
         events = sb.events(match_id=int(match_id))
-        teams = events["team"].dropna().unique().tolist()
-        home_team = teams[0] if teams else "Home"
-        away_team = teams[1] if len(teams) > 1 else "Away"
+        # Get home/away from match metadata rather than guessing from event order
+        matches = self.get_matches()
+        match = next((m for m in matches if m.match_id == match_id), None)
+        if match:
+            home_team, away_team = match.home_team, match.away_team
+        else:
+            teams = events["team"].dropna().unique().tolist()
+            home_team = teams[0] if teams else "Home"
+            away_team = teams[1] if len(teams) > 1 else "Away"
 
         def _team_stats(team: str) -> TeamStats:
             te = events[events["team"] == team]
@@ -99,13 +107,17 @@ class StatsBombProvider(DataProvider):
             key_passes = 0
             if "pass_goal_assist" in pe.columns:
                 key_passes = len(pe[(pe["type"] == "Pass") & (pe["pass_goal_assist"].notna())])
+            assists = 0
+            if "pass_goal_assist" in pe.columns:
+                assists = len(pe[(pe["type"] == "Pass") & (pe["pass_goal_assist"] == True)])
+
             stats.append(PlayerStat(
                 player_name=str(row["player"]),
                 team=str(row["team"]),
                 rating=None,
                 minutes=90,
                 goals=len(goals),
-                assists=0,
+                assists=assists,
                 shots=len(shots),
                 key_passes=key_passes,
                 tackles=len(pe[pe["type"] == "Tackle"]),
