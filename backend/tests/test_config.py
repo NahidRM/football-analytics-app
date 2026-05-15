@@ -1,5 +1,5 @@
-import os
 import pytest
+from backend.visualizations import get_available_analyses
 
 
 def test_app_mode_statsbomb(monkeypatch):
@@ -25,8 +25,6 @@ def test_invalid_app_mode_raises(monkeypatch):
     with pytest.raises(ValueError, match="APP_MODE must be"):
         importlib.reload(cfg)
 
-
-from backend.visualizations import get_available_analyses
 
 def test_statsbomb_analyses():
     result = get_available_analyses("statsbomb")
