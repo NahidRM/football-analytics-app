@@ -16,6 +16,7 @@ from passing_network import draw_passing_network
 from heat_map import draw_heat_map
 from shot_map import draw_shot_map
 from press_map import draw_press_map
+from content_generator import generate_content
 
 # ── PAGE CONFIG ────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -200,6 +201,76 @@ if run:
         finally:
             for _, fig in figs:
                 plt.close(fig)
+
+        # Build stats summary for content generation
+        selected_analysis = selected_analyses[0] if selected_analyses else ''
+        if selected_analysis == 'Shot Map':
+            shots = events[(events['type'] == 'Shot') & (events['team'] == selected_team)]
+            goals = shots[shots['shot_outcome'] == 'Goal']
+            total_xg = shots['shot_statsbomb_xg'].fillna(0).sum()
+            stats_summary = (
+                f"Shots: {len(shots)}, Goals: {len(goals)}, "
+                f"Total xG: {total_xg:.2f}, xG per shot: {total_xg/max(len(shots),1):.2f}"
+            )
+        elif selected_analysis == 'Press Map':
+            pressure = events[
+                (events['type'] == 'Pressure') & (events['team'] == selected_team)
+            ]
+            stats_summary = f"Total pressures: {len(pressure)}"
+        elif selected_analysis == 'Passing Network':
+            passes = events[
+                (events['type'] == 'Pass') & (events['team'] == selected_team) &
+                (events['pass_outcome'].isna())
+            ]
+            stats_summary = f"Successful passes: {len(passes)}"
+        elif selected_analysis == 'Heat Map':
+            player_events = events[
+                (events['team'] == selected_team) &
+                (events['player'] == selected_player) &
+                (events['location'].notna())
+            ]
+            stats_summary = (
+                f"Player: {selected_player}, "
+                f"Total touch events: {len(player_events)}, "
+                f"Event types: {', '.join(player_events['type'].value_counts().head(3).index.tolist())}"
+            )
+        else:
+            stats_summary = 'No stats available'
+
+        st.divider()
+        st.subheader('Generate Content')
+        st.caption('AI-drafted content in your voice. Edit before publishing.')
+
+        if st.button('Generate Newsletter Draft + Twitter Thread'):
+            with st.spinner('Writing content...'):
+                try:
+                    newsletter, twitter = generate_content(
+                        selected_analysis, selected_team,
+                        match_label, stats_summary
+                    )
+
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.markdown('**Newsletter Draft**')
+                        st.text_area(
+                            label='newsletter',
+                            value=newsletter,
+                            height=300,
+                            label_visibility='collapsed'
+                        )
+
+                    with col2:
+                        st.markdown('**Twitter Thread**')
+                        st.text_area(
+                            label='twitter',
+                            value=twitter,
+                            height=300,
+                            label_visibility='collapsed'
+                        )
+
+                except Exception as e:
+                    st.error(f'Content generation failed: {e}')
 
 else:
     if not selected_analyses:
