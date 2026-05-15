@@ -6,3 +6,5 @@ matplotlib
 Pillow
 streamlit
 pytest
+anthropic
+python-dotenv
