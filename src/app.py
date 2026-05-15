@@ -229,11 +229,14 @@ if run:
                 (events['player'] == selected_player) &
                 (events['location'].notna())
             ]
-            stats_summary = (
-                f"Player: {selected_player}, "
-                f"Total touch events: {len(player_events)}, "
-                f"Event types: {', '.join(player_events['type'].value_counts().head(3).index.tolist())}"
-            )
+            if player_events.empty:
+                stats_summary = f"Player: {selected_player}, No touch events found"
+            else:
+                stats_summary = (
+                    f"Player: {selected_player}, "
+                    f"Total touch events: {len(player_events)}, "
+                    f"Event types: {', '.join(player_events['type'].value_counts().head(3).index.tolist())}"
+                )
         else:
             stats_summary = 'No stats available'
 
@@ -257,7 +260,8 @@ if run:
                             label='newsletter',
                             value=newsletter,
                             height=300,
-                            label_visibility='collapsed'
+                            label_visibility='collapsed',
+                            key='newsletter_draft'
                         )
 
                     with col2:
@@ -266,7 +270,8 @@ if run:
                             label='twitter',
                             value=twitter,
                             height=300,
-                            label_visibility='collapsed'
+                            label_visibility='collapsed',
+                            key='twitter_draft'
                         )
 
                 except Exception as e:
