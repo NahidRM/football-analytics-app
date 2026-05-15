@@ -74,10 +74,8 @@ class WorldCupProvider(DataProvider):
 
         def _extract(team: str) -> TeamStats:
             s = team_stats.get(team, [])
-            poss_raw = self._get_stat(s, "Ball Possession", str, 0)
-            poss = float(str(poss_raw).replace("%", "").strip() or "0")
             return TeamStats(
-                possession=poss,
+                possession=self._get_stat(s, "Ball Possession", float),
                 shots=self._get_stat(s, "Total Shots", int),
                 shots_on_target=self._get_stat(s, "Shots on Goal", int),
                 passes=self._get_stat(s, "Total passes", int),
@@ -93,9 +91,15 @@ class WorldCupProvider(DataProvider):
             away=_extract(away_team),
         )
 
-    def _parse_fbref_shots(self, df, match_id: str) -> list[Shot] | None:
+    def _parse_fbref_shots(self, df, match: Match | None) -> list[Shot] | None:
         try:
             if df is None or df.empty:
+                return None
+            # Filter to this specific match by team names if match metadata is available
+            if match is not None and "squad" in df.columns:
+                teams = {match.home_team, match.away_team}
+                df = df[df["squad"].isin(teams)]
+            if df.empty:
                 return None
             shots = []
             for _, row in df.iterrows():
@@ -124,12 +128,13 @@ class WorldCupProvider(DataProvider):
         return matches
 
     def get_match_stats(self, match_id: str) -> MatchStats:
-        fix_data = self._get("fixtures", {"id": match_id})
-        fix = fix_data["response"][0]
-        home_team = fix["teams"]["home"]["name"]
-        away_team = fix["teams"]["away"]["name"]
         stats_data = self._get("fixtures/statistics", {"fixture": match_id})
-        return self._parse_match_stats(home_team, away_team, stats_data.get("response", []))
+        response = stats_data.get("response", [])
+        if len(response) < 2:
+            raise ValueError(f"No stats available for match {match_id}")
+        home_team = response[0]["team"]["name"]
+        away_team = response[1]["team"]["name"]
+        return self._parse_match_stats(home_team, away_team, response)
 
     def get_player_stats(self, match_id: str) -> list[PlayerStat]:
         data = self._get("fixtures/players", {"fixture": match_id})
@@ -164,9 +169,12 @@ class WorldCupProvider(DataProvider):
         """Attempt FBref fetch. Returns None if data not yet available."""
         try:
             import soccerdata as sd
+            # Look up team names so we can filter FBref data by match
+            matches = self.get_matches()
+            match = next((m for m in matches if m.match_id == match_id), None)
             fbref = sd.FBref(leagues="World Cup", seasons=2026)
             shots_df = fbref.read_shot_events()
-            return self._parse_fbref_shots(shots_df, match_id)
+            return self._parse_fbref_shots(shots_df, match)
         except Exception as e:
             logging.info("FBref not yet available for match %s: %s", match_id, e)
             return None

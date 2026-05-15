@@ -98,5 +98,5 @@ def test_get_shot_data_returns_none_on_fbref_failure():
 
 def test_parse_fbref_shots_returns_none_on_none_input():
     provider = WorldCupProvider.__new__(WorldCupProvider)
-    result = provider._parse_fbref_shots(None, "12345")
+    result = provider._parse_fbref_shots(None, None)
     assert result is None
