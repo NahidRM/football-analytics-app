@@ -1,3 +1,6 @@
+import logging
+import re
+
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
@@ -108,9 +111,10 @@ def _parse_response(text: str) -> tuple[str, str]:
 
     if 'NEWSLETTER DRAFT' in text and 'TWITTER THREAD' in text:
         parts      = text.split('TWITTER THREAD')
-        newsletter = parts[0].replace('NEWSLETTER DRAFT', '').strip().strip('---').strip()
-        twitter    = parts[1].strip().strip('---').strip()
+        newsletter = re.sub(r'^---\s*$', '', parts[0].replace('NEWSLETTER DRAFT', ''), flags=re.MULTILINE).strip()
+        twitter    = re.sub(r'^---\s*$', '', parts[1], flags=re.MULTILINE).strip()
     else:
+        logging.warning('content_generator: failed to parse sections from Claude response')
         newsletter = text
         twitter    = ''
 
