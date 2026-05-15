@@ -8,7 +8,6 @@ _FIG_BG = "#1a1a2e"
 _PLOT_BG = "#16213e"
 _HIGHLIGHT = "#e94560"
 _TEXT = "#e0e0e0"
-_SUBTEXT = "#aaaaaa"
 _BORDER = "#333355"
 
 
