@@ -9,7 +9,9 @@ except Exception:
 
 
 def save_analysis(record: dict) -> dict:
-    tags = list({record.get("team", ""), record.get("opponent", "")})
+    if _client is None:
+        raise RuntimeError("Supabase client is not configured — set SUPABASE_URL and SUPABASE_SERVICE_KEY")
+    tags = list({v for v in (record.get("team"), record.get("opponent")) if v})
     data = {
         "mode":          record.get("mode", ""),
         "match_label":   record.get("match_label", ""),
@@ -25,6 +27,8 @@ def save_analysis(record: dict) -> dict:
 
 
 def save_draft(analysis_id: str, newsletter: str, twitter: str, regenerated: bool = False) -> dict:
+    if _client is None:
+        raise RuntimeError("Supabase client is not configured — set SUPABASE_URL and SUPABASE_SERVICE_KEY")
     result = _client.table("drafts").insert({
         "analysis_id": analysis_id,
         "newsletter":  newsletter,
@@ -35,6 +39,9 @@ def save_draft(analysis_id: str, newsletter: str, twitter: str, regenerated: boo
 
 
 def get_analyses(tag: str | None = None) -> list[dict]:
+    if _client is None:
+        raise RuntimeError("Supabase client is not configured — set SUPABASE_URL and SUPABASE_SERVICE_KEY")
+    # tag filtering is done in Python — all rows are fetched first
     query = _client.table("analyses").select("*").order("created_at", desc=True)
     result = query.execute()
     rows = result.data or []
@@ -44,6 +51,8 @@ def get_analyses(tag: str | None = None) -> list[dict]:
 
 
 def get_drafts(analysis_id: str) -> list[dict]:
+    if _client is None:
+        raise RuntimeError("Supabase client is not configured — set SUPABASE_URL and SUPABASE_SERVICE_KEY")
     result = (
         _client.table("drafts")
         .select("*")
