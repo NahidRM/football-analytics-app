@@ -34,7 +34,9 @@ function AnalysisPageContent({ id }: { id: string }) {
     api.getMatch(id).then((m) => {
       setAvailableAnalyses(m.available_analyses);
       if (m.available_analyses.length > 0) setSelectedAnalysis(m.available_analyses[0]);
-    }).catch(() => {});
+    }).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : "Failed to load match data");
+    });
   }, [id]);
 
   async function handleAnalyze() {
@@ -153,10 +155,11 @@ function AnalysisPageContent({ id }: { id: string }) {
   );
 }
 
-export default function AnalysisPage({ params }: { params: { id: string } }) {
+export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   return (
     <Suspense fallback={<div className="text-gray-400 text-sm">Loading...</div>}>
-      <AnalysisPageContent id={params.id} />
+      <AnalysisPageContent id={id} />
     </Suspense>
   );
 }

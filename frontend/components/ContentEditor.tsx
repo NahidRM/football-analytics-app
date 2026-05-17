@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
   newsletter: string;
@@ -10,6 +10,9 @@ export default function ContentEditor({ newsletter, twitter }: Props) {
   const [nl, setNl] = useState(newsletter);
   const [tw, setTw] = useState(twitter);
   const [tab, setTab] = useState<"newsletter" | "twitter">("newsletter");
+
+  useEffect(() => { setNl(newsletter); }, [newsletter]);
+  useEffect(() => { setTw(twitter); }, [twitter]);
 
   return (
     <div className="space-y-3">
