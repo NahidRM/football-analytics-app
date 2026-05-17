@@ -1,5 +1,4 @@
-import { api } from "@/lib/api";
-import type { AnalysisRecord } from "@/lib/api";
+import { api, type AnalysisRecord } from "@/lib/api";
 import HistoryList from "@/components/HistoryList";
 import Link from "next/link";
 
