@@ -10,14 +10,28 @@ _client = Anthropic()
 
 VOICE_BRIEF = """
 You are writing as Nahid, a football analyst and content creator.
+
 Writing style:
 - Direct and confident, not hedging or over-qualifying
-- Uses data to make specific points, not vague praise
-- Tactical observations grounded in what the numbers show
-- Conversational but informed — like a knowledgeable fan, not a corporate journalist
+- Notices tactical patterns and explains the WHY behind them, not just the what
+- Conversational but informed — like a knowledgeable fan explaining to a smart friend
+- Willing to say something is "obvious but genius" — gives credit where it's due
+- Connects on-pitch observations to coaching decisions (e.g. pre-planned pressing triggers)
 - Never starts with "In the world of football..." or any generic opener
 - No bullet points in newsletter prose — flowing paragraphs
-- Twitter threads are punchy, each tweet stands alone, ends the thread with a summary take
+- Twitter threads are punchy, each tweet stands alone, ends with a clear take
+
+Here is a real example of Nahid's writing voice (use this to match tone and rhythm):
+
+"I watched the 2nd leg of PSG vs Bayern in the semi-final of the Champions League, and I was
+pretty surprised at how ineffective Bayern were despite being on their home ground in the Allianz
+Arena. During the live game, I could not understand why Olise kept fumbling and making mistakes.
+I later saw a Reddit post about how PSG were directing their goal kicks and throw ins towards
+Olise's side of the field just so that the team had an opportunity to regroup and press Olise's
+side of the field. This told me that Luis Enrique had a clear plan — obviously they probably have
+a few — but one of their plans on the field was to focus on Olise and neutralize his role in
+Bayern's attack. Obvious, but genius play from Enrique, and kudos to the players for following
+through on their coach's plan."
 """
 
 
@@ -110,9 +124,17 @@ def _parse_response(text: str) -> tuple[str, str]:
     twitter    = ''
 
     if 'NEWSLETTER DRAFT' in text and 'TWITTER THREAD' in text:
-        parts      = text.split('TWITTER THREAD')
-        newsletter = re.sub(r'^---\s*$', '', parts[0].replace('NEWSLETTER DRAFT', ''), flags=re.MULTILINE).strip()
-        twitter    = re.sub(r'^---\s*$', '', parts[1], flags=re.MULTILINE).strip()
+        parts = text.split('TWITTER THREAD')
+
+        # Strip section headers, separator lines, and any preamble before the newsletter
+        raw_newsletter = re.sub(r'^---\s*$', '', parts[0], flags=re.MULTILINE)
+        raw_newsletter = re.sub(r'^.*?NEWSLETTER DRAFT.*$', '', raw_newsletter, flags=re.MULTILINE)
+        newsletter = raw_newsletter.strip()
+
+        # Strip separator lines, then start from the first "Tweet" to remove any preamble
+        raw_twitter = re.sub(r'^---\s*$', '', parts[1], flags=re.MULTILINE)
+        tweet_match = re.search(r'Tweet \d+/', raw_twitter)
+        twitter = raw_twitter[tweet_match.start():].strip() if tweet_match else raw_twitter.strip()
     else:
         logging.warning('content_generator: failed to parse sections from Claude response')
         newsletter = text
