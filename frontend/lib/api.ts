@@ -17,6 +17,8 @@ export interface Match {
 export interface MatchDetail extends Match {
   fbref_available: boolean;
   available_analyses: string[];
+  home_players: string[];
+  away_players: string[];
 }
 
 export interface AnalyzeResponse {

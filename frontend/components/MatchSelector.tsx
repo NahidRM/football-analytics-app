@@ -137,22 +137,20 @@ export default function MatchSelector({ matches }: Props) {
         <button onClick={goToCompetition} className="text-xs text-gray-400 hover:text-gray-200">← Back</button>
         <p className="text-sm font-semibold text-white">{selectedComp}</p>
 
-        {/* Season pills */}
+        {/* Season dropdown */}
         {seasons.length > 1 && (
-          <div className="flex flex-wrap gap-2">
-            {seasons.map(s => (
-              <button
-                key={s}
-                onClick={() => { setSelectedSeason(s); setSearch(""); }}
-                className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                  selectedSeason === s
-                    ? "bg-[#e94560] border-[#e94560] text-white"
-                    : "border-gray-600 text-gray-300 hover:border-gray-400"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">Season</label>
+            <select
+              value={selectedSeason}
+              onChange={e => { setSelectedSeason(e.target.value); setSearch(""); }}
+              className="w-full bg-[#16213e] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#e94560] text-white"
+            >
+              <option value="">Select a season…</option>
+              {seasons.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
         )}
 

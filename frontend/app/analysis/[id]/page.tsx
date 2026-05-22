@@ -2,7 +2,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
-import type { AnalyzeResponse, ContentResponse } from "@/lib/api";
+import type { AnalyzeResponse, ContentResponse, MatchDetail } from "@/lib/api";
 import AnalysisCard from "@/components/AnalysisCard";
 import ContentEditor from "@/components/ContentEditor";
 import PendingBadge from "@/components/PendingBadge";
@@ -21,6 +21,7 @@ function AnalysisPageContent({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const team = searchParams.get("team") ?? "";
 
+  const [matchDetail, setMatchDetail] = useState<MatchDetail | null>(null);
   const [availableAnalyses, setAvailableAnalyses] = useState<string[]>([]);
   const [selectedAnalyses, setSelectedAnalyses] = useState<Set<string>>(new Set());
   const [playerName, setPlayerName] = useState<string>("");
@@ -32,6 +33,7 @@ function AnalysisPageContent({ id }: { id: string }) {
 
   useEffect(() => {
     api.getMatch(id).then((m) => {
+      setMatchDetail(m);
       setAvailableAnalyses(m.available_analyses);
       if (m.available_analyses.length > 0) {
         setSelectedAnalyses(new Set([m.available_analyses[0]]));
@@ -40,6 +42,11 @@ function AnalysisPageContent({ id }: { id: string }) {
       setError(e instanceof Error ? e.message : "Failed to load match data");
     });
   }, [id]);
+
+  // Players for the selected team (used in heat map dropdown)
+  const teamPlayers = matchDetail
+    ? (team === matchDetail.home_team ? matchDetail.home_players : matchDetail.away_players)
+    : [];
 
   function toggleAnalysis(a: string) {
     setSelectedAnalyses(prev => {
@@ -100,6 +107,9 @@ function AnalysisPageContent({ id }: { id: string }) {
     ? `Generate ${selectedAnalyses.size} Visualizations`
     : "Generate Visualization";
 
+  // Heat map requires a player — disable Generate if none selected
+  const heatMapMissingPlayer = selectedAnalyses.has("heat_map") && !playerName;
+
   return (
     <div className="space-y-8 max-w-5xl">
       <div>
@@ -126,18 +136,26 @@ function AnalysisPageContent({ id }: { id: string }) {
           ))}
         </div>
 
+        {/* Player dropdown — shown when Heat Map is selected */}
         {selectedAnalyses.has("heat_map") && (
-          <input
-            placeholder="Player name (for Heat Map)"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            className="bg-[#16213e] border border-gray-700 rounded-lg px-3 py-2 text-sm w-full max-w-xs focus:outline-none focus:border-[#e94560]"
-          />
+          <div className="space-y-1">
+            <label className="text-xs text-gray-400">Player (for Heat Map)</label>
+            <select
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              className="w-full max-w-xs bg-[#16213e] border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#e94560] text-white"
+            >
+              <option value="">Select a player…</option>
+              {teamPlayers.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
         )}
 
         <button
           onClick={handleAnalyze}
-          disabled={loading || selectedAnalyses.size === 0}
+          disabled={loading || selectedAnalyses.size === 0 || heatMapMissingPlayer}
           className="px-6 py-2 bg-[#e94560] rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-[#c73652] transition-colors"
         >
           {loading ? "Generating..." : btnLabel}
@@ -187,11 +205,11 @@ function AnalysisPageContent({ id }: { id: string }) {
   );
 }
 
-export default async function AnalysisPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+// In Next.js 14, page params for client components are direct objects (not Promises).
+export default function AnalysisPage({ params }: { params: { id: string } }) {
   return (
     <Suspense fallback={<div className="text-gray-400 text-sm">Loading...</div>}>
-      <AnalysisPageContent id={id} />
+      <AnalysisPageContent id={params.id} />
     </Suspense>
   );
 }

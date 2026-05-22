@@ -92,6 +92,14 @@ def get_match(match_id: str):
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
     shot_data = provider.get_shot_data(match_id)
+    # Fetch lineup to expose player names for the heat map picker
+    try:
+        lineup = provider.get_lineup(match_id)
+        home_players = lineup.home_players
+        away_players = lineup.away_players
+    except Exception:
+        home_players = []
+        away_players = []
     return {
         "match_id": match.match_id,
         "label": match.label,
@@ -100,8 +108,14 @@ def get_match(match_id: str):
         "home_score": match.home_score,
         "away_score": match.away_score,
         "date": match.date,
+        "competition": match.competition,
+        "season": match.season,
+        "country": match.country,
+        "is_live": match.is_live,
         "fbref_available": shot_data is not None,
         "available_analyses": get_available_analyses(match_id),
+        "home_players": home_players,
+        "away_players": away_players,
     }
 
 
