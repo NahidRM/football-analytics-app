@@ -117,6 +117,11 @@ export default function MatchSelector({ matches }: Props) {
                   key={c.competition}
                   onClick={() => {
                     setSelectedComp(c.competition);
+                    // Auto-select season if only one exists
+                    const compSeasons = Array.from(new Set(matches.filter(m => m.competition === c.competition).map(m => m.season)));
+                    if (compSeasons.length === 1) {
+                      setSelectedSeason(compSeasons[0]);
+                    }
                     setStep("match");
                   }}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-700 bg-[#16213e] hover:border-gray-500 transition-colors text-left"
