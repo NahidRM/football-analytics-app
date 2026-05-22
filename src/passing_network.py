@@ -14,7 +14,6 @@ from config import (
     LINE_COLOR, LINE_ALPHA, ACCENT_COLOR
 )
 
-MIN_PASS_THRESHOLD = 5
 EDGE_COLOR = '#333333'
 
 # Known StatsBomb name quirks — see LEARNINGS.md for why these exist
@@ -79,7 +78,9 @@ def draw_passing_network(
     pass_combinations = passes.groupby(
         ['player', 'pass_recipient']
     ).size().reset_index(name='count')
-    pass_combinations = pass_combinations[pass_combinations['count'] >= MIN_PASS_THRESHOLD]
+    # Filter to edges at or above 75th percentile of pass frequencies
+    threshold = pass_combinations['count'].quantile(0.75)
+    pass_combinations = pass_combinations[pass_combinations['count'] >= threshold]
 
     active_players = set(
         pass_combinations['player'].tolist() +
