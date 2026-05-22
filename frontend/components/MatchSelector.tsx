@@ -63,13 +63,22 @@ export default function MatchSelector({ matches }: Props) {
     router.push(`/analysis/${selectedMatch.match_id}?team=${encodeURIComponent(team)}`);
   }
 
-  function reset() {
+  function goToCompetition() {
     setStep("competition");
     setSelectedComp("");
     setSelectedSeason("");
     setSelectedMatchId("");
     setSearch("");
     setTeam("");
+  }
+
+  function handleSelectComp(compName: string) {
+    setSelectedComp(compName);
+    const compSeasons = Array.from(new Set(
+      matches.filter(m => m.competition === compName).map(m => m.season)
+    ));
+    if (compSeasons.length === 1) setSelectedSeason(compSeasons[0]);
+    setStep("match");
   }
 
   // ── COMPETITION STEP ─────────────────────────────────────────────────────────
@@ -86,15 +95,7 @@ export default function MatchSelector({ matches }: Props) {
               {liveComps.map(c => (
                 <button
                   key={c.competition}
-                  onClick={() => {
-                    setSelectedComp(c.competition);
-                    // Auto-select season if only one exists
-                    const compSeasons = Array.from(new Set(matches.filter(m => m.competition === c.competition).map(m => m.season)));
-                    if (compSeasons.length === 1) {
-                      setSelectedSeason(compSeasons[0]);
-                    }
-                    setStep("match");
-                  }}
+                  onClick={() => handleSelectComp(c.competition)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[#e94560] bg-[#16213e] hover:bg-[#1a2850] transition-colors text-left"
                 >
                   <span className="text-2xl">{COUNTRY_FLAG[c.country] ?? "⚽"}</span>
@@ -115,15 +116,7 @@ export default function MatchSelector({ matches }: Props) {
               {archiveComps.map(c => (
                 <button
                   key={c.competition}
-                  onClick={() => {
-                    setSelectedComp(c.competition);
-                    // Auto-select season if only one exists
-                    const compSeasons = Array.from(new Set(matches.filter(m => m.competition === c.competition).map(m => m.season)));
-                    if (compSeasons.length === 1) {
-                      setSelectedSeason(compSeasons[0]);
-                    }
-                    setStep("match");
-                  }}
+                  onClick={() => handleSelectComp(c.competition)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-700 bg-[#16213e] hover:border-gray-500 transition-colors text-left"
                 >
                   <span className="text-xl">{COUNTRY_FLAG[c.country] ?? "⚽"}</span>
@@ -141,7 +134,7 @@ export default function MatchSelector({ matches }: Props) {
   if (step === "match") {
     return (
       <div className="space-y-4">
-        <button onClick={reset} className="text-xs text-gray-400 hover:text-gray-200">← Back</button>
+        <button onClick={goToCompetition} className="text-xs text-gray-400 hover:text-gray-200">← Back</button>
         <p className="text-sm font-semibold text-white">{selectedComp}</p>
 
         {/* Season pills */}
@@ -177,7 +170,7 @@ export default function MatchSelector({ matches }: Props) {
                 <button
                   key={m.match_id}
                   onClick={() => { setSelectedMatchId(m.match_id); setTeam(""); setStep("team"); }}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#16213e] transition-colors text-sm"
+                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-[#1a2850] transition-colors text-sm"
                 >
                   <span className="text-gray-400 text-xs mr-2">{m.date.slice(0, 7)}</span>
                   <span className="text-white">{m.home_team} {m.home_score}–{m.away_score} {m.away_team}</span>
