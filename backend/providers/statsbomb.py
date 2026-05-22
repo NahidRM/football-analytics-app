@@ -37,8 +37,17 @@ _COUNTRY = {
 }
 
 
+# Module-level cache so get_matches() only does the heavy fetch once per
+# server process. Every call after the first returns the cached list instantly.
+_matches_cache: list[Match] | None = None
+
+
 class StatsBombProvider(DataProvider):
     def get_matches(self) -> list[Match]:
+        global _matches_cache
+        if _matches_cache is not None:
+            return _matches_cache
+
         # Load all StatsBomb free competitions dynamically — no hardcoded list.
         # statsbombpy caches match data locally after the first fetch, so the
         # initial load is slower but subsequent startups are near-instant.
@@ -74,6 +83,7 @@ class StatsBombProvider(DataProvider):
                 logging.warning("Skipping competition %s/%s: %s", comp_id, season_id, e)
                 continue
         rows.sort(key=lambda m: m.date, reverse=True)
+        _matches_cache = rows
         return rows
 
     def get_match_stats(self, match_id: str) -> MatchStats:
