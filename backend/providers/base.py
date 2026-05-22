@@ -12,6 +12,10 @@ class Match:
     home_score: int
     away_score: int
     date: str
+    competition: str = ""
+    season: str = ""
+    country: str = ""
+    is_live: bool = False
 
 
 @dataclass

@@ -9,8 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from backend.config import APP_MODE
-from backend.providers import get_active_provider
+from backend.providers import get_provider_for_match, get_all_matches
 from backend.providers.base import DataProvider
 from backend.content_generator import generate_content
 from backend.visualizations import get_available_analyses
@@ -47,7 +46,6 @@ class ContentRequest(BaseModel):
 
 @app.get("/matches")
 def list_matches():
-    provider = get_active_provider()
     return [
         {
             "match_id": m.match_id,
@@ -57,14 +55,36 @@ def list_matches():
             "home_score": m.home_score,
             "away_score": m.away_score,
             "date": m.date,
+            "competition": m.competition,
+            "season": m.season,
+            "country": m.country,
+            "is_live": m.is_live,
         }
-        for m in provider.get_matches()
+        for m in get_all_matches()
     ]
+
+
+@app.get("/competitions")
+def list_competitions():
+    """Return distinct competitions for the match selector UI."""
+    seen: dict[str, dict] = {}
+    for m in get_all_matches():
+        key = f"{m.competition}|{m.season}"
+        if key not in seen:
+            seen[key] = {
+                "competition": m.competition,
+                "season": m.season,
+                "country": m.country,
+                "is_live": m.is_live,
+                "match_count": 0,
+            }
+        seen[key]["match_count"] += 1
+    return list(seen.values())
 
 
 @app.get("/matches/{match_id}")
 def get_match(match_id: str):
-    provider = get_active_provider()
+    provider = get_provider_for_match(match_id)
     match = next((m for m in provider.get_matches() if m.match_id == match_id), None)
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
@@ -78,20 +98,20 @@ def get_match(match_id: str):
         "away_score": match.away_score,
         "date": match.date,
         "fbref_available": shot_data is not None,
-        "available_analyses": get_available_analyses(APP_MODE),
+        "available_analyses": get_available_analyses(match_id),
     }
 
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
-    available = get_available_analyses(APP_MODE)
+    available = get_available_analyses(req.match_id)
     if req.analysis_type not in available:
         raise HTTPException(
             status_code=400,
-            detail=f"'{req.analysis_type}' not available in {APP_MODE} mode. Available: {available}",
+            detail=f"'{req.analysis_type}' not available for match '{req.match_id}'. Available: {available}",
         )
 
-    provider = get_active_provider()
+    provider = get_provider_for_match(req.match_id)
     shot_data = provider.get_shot_data(req.match_id)
     match = next((m for m in provider.get_matches() if m.match_id == req.match_id), None)
     match_label = match.label if match else req.match_id
@@ -112,7 +132,7 @@ def analyze(req: AnalyzeRequest):
         if match:
             opponent = match.away_team if match.home_team == req.team else match.home_team
         saved = db_save({
-            "mode": APP_MODE,
+            "mode": "sb" if req.match_id.startswith("sb:") else "apf",
             "match_label": match_label,
             "team": req.team,
             "opponent": opponent,
@@ -215,7 +235,7 @@ def _run_analysis(req: AnalyzeRequest, provider: DataProvider, shot_data, match_
 
     # StatsBomb visualizations — need events DataFrame
     from statsbombpy import sb
-    events = sb.events(match_id=int(req.match_id))
+    events = sb.events(match_id=int(req.match_id.removeprefix("sb:")))
 
     if t == "passing_network":
         from backend.visualizations.passing_network import draw_passing_network

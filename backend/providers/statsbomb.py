@@ -21,6 +21,14 @@ _COMPETITIONS = [
     (55, 43),   # UEFA Euro 2020
 ]
 
+_COUNTRY = {
+    2: "England",    # Premier League
+    11: "Spain",     # La Liga
+    16: "Europe",    # Champions League
+    37: "England",   # FA WSL
+    55: "Europe",    # Euro 2020
+}
+
 
 class StatsBombProvider(DataProvider):
     def get_matches(self) -> list[Match]:
@@ -43,13 +51,17 @@ class StatsBombProvider(DataProvider):
                         f"{int(row['away_score'])} {row['away_team']} | {suffix}"
                     )
                     rows.append(Match(
-                        match_id=str(int(row["match_id"])),
+                        match_id="sb:" + str(int(row["match_id"])),
                         label=label,
                         home_team=str(row["home_team"]),
                         away_team=str(row["away_team"]),
                         home_score=int(row["home_score"]),
                         away_score=int(row["away_score"]),
                         date=str(row["match_date"])[:10],
+                        competition=comp_name,
+                        season=season_name,
+                        country=_COUNTRY.get(comp_id, ""),
+                        is_live=False,
                     ))
             except Exception as e:
                 logging.warning("Skipping competition %s/%s: %s", comp_id, season_id, e)
@@ -58,7 +70,7 @@ class StatsBombProvider(DataProvider):
         return rows
 
     def get_match_stats(self, match_id: str) -> MatchStats:
-        events = sb.events(match_id=int(match_id))
+        events = sb.events(match_id=int(match_id.removeprefix("sb:")))
         # Get home/away from match metadata rather than guessing from event order
         matches = self.get_matches()
         match = next((m for m in matches if m.match_id == match_id), None)
@@ -97,7 +109,7 @@ class StatsBombProvider(DataProvider):
         )
 
     def get_player_stats(self, match_id: str) -> list[PlayerStat]:
-        events = sb.events(match_id=int(match_id))
+        events = sb.events(match_id=int(match_id.removeprefix("sb:")))
         players = events[events["player"].notna()][["player", "team"]].drop_duplicates()
         stats = []
         for _, row in players.iterrows():
@@ -126,7 +138,7 @@ class StatsBombProvider(DataProvider):
         return stats
 
     def get_shot_data(self, match_id: str) -> list[Shot] | None:
-        events = sb.events(match_id=int(match_id))
+        events = sb.events(match_id=int(match_id.removeprefix("sb:")))
         shots_df = events[events["type"] == "Shot"]
         if shots_df.empty:
             return []
@@ -146,7 +158,7 @@ class StatsBombProvider(DataProvider):
         return shots
 
     def get_lineup(self, match_id: str) -> Lineup:
-        lineups = sb.lineups(match_id=int(match_id))
+        lineups = sb.lineups(match_id=int(match_id.removeprefix("sb:")))
         teams = list(lineups.keys())
         home_team = teams[0] if teams else "Home"
         away_team = teams[1] if len(teams) > 1 else "Away"

@@ -57,7 +57,7 @@ def test_parse_matches():
     matches = provider._parse_fixtures(FAKE_FIXTURES_RESPONSE["response"])
     assert len(matches) == 1
     m = matches[0]
-    assert m.match_id == "12345"
+    assert m.match_id == "apf:12345"
     assert m.home_team == "France"
     assert m.away_team == "Morocco"
     assert m.home_score == 2
@@ -87,7 +87,7 @@ def test_get_shot_data_returns_none_on_fbref_failure():
     original = sys.modules.pop("soccerdata", None)
     sys.modules["soccerdata"] = None  # type: ignore — forces ImportError on import
     try:
-        result = provider.get_shot_data("12345")
+        result = provider.get_shot_data("apf:12345")
         assert result is None
     finally:
         if original is not None:

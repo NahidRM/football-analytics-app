@@ -27,12 +27,12 @@ def test_invalid_app_mode_raises(monkeypatch):
 
 
 def test_statsbomb_analyses():
-    result = get_available_analyses("statsbomb")
+    result = get_available_analyses("sb:1")
     assert "passing_network" in result
     assert "match_stats" not in result
 
 def test_world_cup_analyses():
-    result = get_available_analyses("world_cup")
+    result = get_available_analyses("apf:1")
     assert "match_stats" in result
     assert "player_ratings" in result
     assert "xg_timeline" in result

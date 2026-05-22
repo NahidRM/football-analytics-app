@@ -55,13 +55,17 @@ class WorldCupProvider(DataProvider):
                 f"{league.get('name', 'World Cup')} {league.get('season', 2026)}"
             )
             matches.append(Match(
-                match_id=str(fixture["id"]),
+                match_id="apf:" + str(fixture["id"]),
                 label=label,
                 home_team=teams["home"]["name"],
                 away_team=teams["away"]["name"],
                 home_score=int(goals.get("home") or 0),
                 away_score=int(goals.get("away") or 0),
                 date=str(fixture.get("date", ""))[:10],
+                competition="FIFA World Cup 2026",
+                season="2026",
+                country="International",
+                is_live=True,
             ))
         return matches
 
@@ -118,17 +122,20 @@ class WorldCupProvider(DataProvider):
             return None
 
     def get_matches(self) -> list[Match]:
-        data = self._get("fixtures", {"league": _WC_LEAGUE_ID, "season": _WC_SEASON})
-        fixtures = [
-            f for f in data.get("response", [])
-            if f.get("fixture", {}).get("status", {}).get("short") == "FT"
-        ]
-        matches = self._parse_fixtures(fixtures)
-        matches.sort(key=lambda m: m.date, reverse=True)
-        return matches
+        try:
+            data = self._get("fixtures", {"league": _WC_LEAGUE_ID, "season": _WC_SEASON})
+            fixtures = [
+                f for f in data.get("response", [])
+                if f.get("fixture", {}).get("status", {}).get("short") == "FT"
+            ]
+            matches = self._parse_fixtures(fixtures)
+            matches.sort(key=lambda m: m.date, reverse=True)
+            return matches
+        except Exception:
+            return []
 
     def get_match_stats(self, match_id: str) -> MatchStats:
-        stats_data = self._get("fixtures/statistics", {"fixture": match_id})
+        stats_data = self._get("fixtures/statistics", {"fixture": match_id.removeprefix("apf:")})
         response = stats_data.get("response", [])
         if len(response) < 2:
             raise ValueError(f"No stats available for match {match_id}")
@@ -137,7 +144,7 @@ class WorldCupProvider(DataProvider):
         return self._parse_match_stats(home_team, away_team, response)
 
     def get_player_stats(self, match_id: str) -> list[PlayerStat]:
-        data = self._get("fixtures/players", {"fixture": match_id})
+        data = self._get("fixtures/players", {"fixture": match_id.removeprefix("apf:")})
         stats = []
         for team_entry in data.get("response", []):
             team_name = team_entry["team"]["name"]
@@ -180,7 +187,7 @@ class WorldCupProvider(DataProvider):
             return None
 
     def get_lineup(self, match_id: str) -> Lineup:
-        data = self._get("fixtures/lineups", {"fixture": match_id})
+        data = self._get("fixtures/lineups", {"fixture": match_id.removeprefix("apf:")})
         response = data.get("response", [])
         home_entry = response[0] if response else {}
         away_entry = response[1] if len(response) > 1 else {}

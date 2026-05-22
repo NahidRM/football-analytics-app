@@ -1,19 +1,25 @@
-from backend.visualizations import get_available_analyses, ANALYSIS_REGISTRY
+from backend.visualizations import get_available_analyses
 
 
 def test_statsbomb_analyses():
-    result = get_available_analyses("statsbomb")
+    result = get_available_analyses("sb:123")
     assert set(result) == {"passing_network", "heat_map", "shot_map", "press_map"}
 
 
 def test_world_cup_analyses():
-    result = get_available_analyses("world_cup")
+    result = get_available_analyses("apf:456")
     assert set(result) == {"match_stats", "player_ratings", "xg_timeline"}
 
 
-def test_all_seven_analysis_types_registered():
-    all_types = set(ANALYSIS_REGISTRY.keys())
-    assert all_types == {
+def test_unknown_prefix_returns_empty():
+    result = get_available_analyses("unknown:789")
+    assert result == []
+
+
+def test_all_seven_analysis_types_covered():
+    sb_types = set(get_available_analyses("sb:1"))
+    apf_types = set(get_available_analyses("apf:1"))
+    assert sb_types | apf_types == {
         "passing_network", "heat_map", "shot_map", "press_map",
         "match_stats", "player_ratings", "xg_timeline",
     }

@@ -8,7 +8,10 @@ from backend.providers.base import Match, MatchStats, TeamStats, Lineup, PlayerS
 def _mock_provider():
     m = MagicMock()
     m.get_matches.return_value = [
-        Match("123", "France 2–1 Morocco | WC 2026 QF", "France", "Morocco", 2, 1, "2026-07-05")
+        Match(
+            "apf:123", "France 2–1 Morocco | WC 2026 QF", "France", "Morocco", 2, 1, "2026-07-05",
+            competition="FIFA World Cup 2026", season="2026", country="International", is_live=True,
+        )
     ]
     m.get_match_stats.return_value = MatchStats(
         home_team="France", away_team="Morocco",
@@ -36,28 +39,30 @@ def client():
 
 
 def test_get_matches(client):
-    with patch("backend.main.get_active_provider", return_value=_mock_provider()):
+    with patch("backend.main.get_all_matches", return_value=_mock_provider().get_matches()):
         response = client.get("/matches")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert data[0]["match_id"] == "123"
+    assert data[0]["match_id"] == "apf:123"
     assert data[0]["label"] == "France 2–1 Morocco | WC 2026 QF"
+    assert data[0]["is_live"] is True
 
 
 def test_get_match_detail(client):
-    with patch("backend.main.get_active_provider", return_value=_mock_provider()):
-        response = client.get("/matches/123")
+    with patch("backend.main.get_provider_for_match", return_value=_mock_provider()):
+        response = client.get("/matches/apf:123")
     assert response.status_code == 200
     data = response.json()
-    assert data["match_id"] == "123"
+    assert data["match_id"] == "apf:123"
     assert data["fbref_available"] is False
+    assert set(data["available_analyses"]) == {"match_stats", "player_ratings", "xg_timeline"}
 
 
 def test_analyze_unknown_type_returns_400(client):
-    with patch("backend.main.get_active_provider", return_value=_mock_provider()):
+    with patch("backend.main.get_provider_for_match", return_value=_mock_provider()):
         response = client.post("/analyze", json={
-            "match_id": "123",
+            "match_id": "apf:123",
             "team": "France",
             "analysis_type": "unknown_type",
         })
@@ -65,7 +70,6 @@ def test_analyze_unknown_type_returns_400(client):
 
 
 def test_analyses_endpoint_returns_list(client):
-    with patch("backend.main.get_active_provider", return_value=_mock_provider()):
-        response = client.get("/analyses")
+    response = client.get("/analyses")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
