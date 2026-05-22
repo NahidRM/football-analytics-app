@@ -11,40 +11,47 @@ from .base import (
     PlayerStat, Shot, Lineup
 )
 
-# StatsBomb free competitions to expose
-_COMPETITIONS = [
-    (2, 44),    # Premier League 2003/04
-    (2, 90),    # Premier League 2015/16
-    (11, 1),    # La Liga 2004/05
-    (16, 4),    # Champions League 2018/19
-    (37, 42),   # FA Women's Super League 2018/19
-    (55, 43),   # UEFA Euro 2020
-]
-
+# Country/region per competition ID — used to show the right flag in the UI
 _COUNTRY = {
-    2: "England",    # Premier League
-    11: "Spain",     # La Liga
-    16: "Europe",    # Champions League
-    37: "England",   # FA WSL
-    55: "Europe",    # Euro 2020
+    2:    "England",        # Premier League
+    7:    "France",         # Ligue 1
+    9:    "Germany",        # Bundesliga
+    11:   "Spain",          # La Liga
+    12:   "Italy",          # Serie A
+    16:   "Europe",         # Champions League
+    35:   "Europe",         # UEFA Europa League
+    37:   "England",        # FA Women's Super League
+    43:   "International",  # FIFA World Cup
+    44:   "USA",            # MLS
+    49:   "USA",            # NWSL
+    53:   "Europe",         # UEFA Women's Euro
+    55:   "Europe",         # UEFA Euro
+    72:   "International",  # Women's World Cup
+    81:   "Argentina",      # Liga Profesional
+    87:   "Spain",          # Copa del Rey
+    116:  "International",  # North American Soccer League
+    223:  "International",  # Copa América
+    1238: "India",          # Indian Super League
+    1267: "Africa",         # African Cup of Nations
+    1470: "International",  # FIFA U20 World Cup
 }
 
 
 class StatsBombProvider(DataProvider):
     def get_matches(self) -> list[Match]:
+        # Load all StatsBomb free competitions dynamically — no hardcoded list.
+        # statsbombpy caches match data locally after the first fetch, so the
+        # initial load is slower but subsequent startups are near-instant.
         rows = []
         comp_df = sb.competitions()
-        for comp_id, season_id in _COMPETITIONS:
+        for _, comp_row in comp_df.iterrows():
+            comp_id = int(comp_row["competition_id"])
+            season_id = int(comp_row["season_id"])
+            comp_name = str(comp_row["competition_name"])
+            season_name = str(comp_row["season_name"])
+            suffix = f"{comp_name} {season_name}"
             try:
                 df = sb.matches(competition_id=comp_id, season_id=season_id)
-                comp_row = comp_df[
-                    (comp_df["competition_id"] == comp_id) &
-                    (comp_df["season_id"] == season_id)
-                ]
-                comp_name = comp_row.iloc[0]["competition_name"] if not comp_row.empty else ""
-                season_name = comp_row.iloc[0]["season_name"] if not comp_row.empty else ""
-                suffix = f"{comp_name} {season_name}"
-
                 for _, row in df.iterrows():
                     label = (
                         f"{row['home_team']} {int(row['home_score'])}–"
