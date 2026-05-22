@@ -8,6 +8,10 @@ export interface Match {
   home_score: number;
   away_score: number;
   date: string;
+  competition: string;
+  season: string;
+  country: string;
+  is_live: boolean;
 }
 
 export interface MatchDetail extends Match {
@@ -82,6 +86,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  getCompetitions: () =>
+    apiFetch<Array<{
+      competition: string;
+      season: string;
+      country: string;
+      is_live: boolean;
+      match_count: number;
+    }>>("/competitions"),
 
   getAnalyses: () =>
     apiFetch<AnalysisRecord[]>("/analyses"),

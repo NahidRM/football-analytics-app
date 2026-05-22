@@ -21,7 +21,7 @@ export default async function HomePage() {
 
       {matches.length === 0 ? (
         <p className="text-gray-500 text-sm">
-          No matches available — make sure the backend is running on{" "}
+          No matches available yet — make sure the backend is running on{" "}
           <code className="text-gray-400">localhost:8000</code>.
         </p>
       ) : (
