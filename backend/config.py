@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 APP_MODE = os.getenv("APP_MODE", "statsbomb")
 

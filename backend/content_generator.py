@@ -4,7 +4,7 @@ import re
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 _client = Anthropic()
 
