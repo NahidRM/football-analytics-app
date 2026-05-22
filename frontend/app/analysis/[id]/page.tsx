@@ -205,11 +205,13 @@ function AnalysisPageContent({ id }: { id: string }) {
   );
 }
 
-// In Next.js 14, page params for client components are direct objects (not Promises).
+// Next.js encodes special characters (like ':') in URL path segments.
+// decodeURIComponent turns 'sb%3A3749448' back into 'sb:3749448'.
 export default function AnalysisPage({ params }: { params: { id: string } }) {
+  const id = decodeURIComponent(params.id);
   return (
     <Suspense fallback={<div className="text-gray-400 text-sm">Loading...</div>}>
-      <AnalysisPageContent id={params.id} />
+      <AnalysisPageContent id={id} />
     </Suspense>
   );
 }

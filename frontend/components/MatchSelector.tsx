@@ -9,6 +9,13 @@ interface Props {
 
 type Step = "competition" | "match" | "team";
 
+// Format "2003/2004" → "2003/04", leave anything else as-is
+function formatSeason(s: string): string {
+  const m = s.match(/^(\d{4})\/(\d{4})$/);
+  if (m) return `${m[1]}/${m[2].slice(2)}`;
+  return s;
+}
+
 const COUNTRY_FLAG: Record<string, string> = {
   "International": "🌍",
   "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
@@ -138,7 +145,7 @@ export default function MatchSelector({ matches }: Props) {
         <p className="text-sm font-semibold text-white">{selectedComp}</p>
 
         {/* Season dropdown */}
-        {seasons.length > 1 && (
+        {seasons.length > 0 && (
           <div className="space-y-1">
             <label className="text-xs text-gray-400">Season</label>
             <select
@@ -148,7 +155,7 @@ export default function MatchSelector({ matches }: Props) {
             >
               <option value="">Select a season…</option>
               {seasons.map(s => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>{formatSeason(s)}</option>
               ))}
             </select>
           </div>
