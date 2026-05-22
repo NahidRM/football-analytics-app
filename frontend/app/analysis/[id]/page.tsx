@@ -54,24 +54,29 @@ function AnalysisPageContent({ id }: { id: string }) {
     setError(null);
     setResults(new Map());
     setContents(new Map());
+    const errors: string[] = [];
     try {
       for (const analysisType of Array.from(selectedAnalyses)) {
-        const r = await api.analyze({
-          match_id: id,
-          team,
-          analysis_type: analysisType,
-          player_name: analysisType === "heat_map" ? playerName : undefined,
-        });
-        setResults(prev => new Map(prev).set(analysisType, r));
+        try {
+          const r = await api.analyze({
+            match_id: id,
+            team,
+            analysis_type: analysisType,
+            player_name: analysisType === "heat_map" ? playerName : undefined,
+          });
+          setResults(prev => new Map(prev).set(analysisType, r));
+        } catch (e: unknown) {
+          errors.push(`${ANALYSIS_LABELS[analysisType] ?? analysisType}: ${e instanceof Error ? e.message : "failed"}`);
+        }
       }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Analysis failed");
+      if (errors.length > 0) setError(errors.join(" | "));
     } finally {
       setLoading(false);
     }
   }
 
   async function handleGenerateContent(analysisType: string) {
+    setError(null);
     const result = results.get(analysisType);
     if (!result) return;
     setContentLoading(analysisType);
