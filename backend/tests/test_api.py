@@ -69,6 +69,17 @@ def test_analyze_unknown_type_returns_400(client):
     assert response.status_code == 400
 
 
+def test_get_competitions(client):
+    with patch("backend.main.get_all_matches", return_value=_mock_provider().get_matches()):
+        response = client.get("/competitions")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    if data:
+        for item in data:
+            assert {"competition", "season", "country", "is_live", "match_count"} <= item.keys()
+
+
 def test_analyses_endpoint_returns_list(client):
     response = client.get("/analyses")
     assert response.status_code == 200

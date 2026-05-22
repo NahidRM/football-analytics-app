@@ -84,7 +84,10 @@ def list_competitions():
 
 @app.get("/matches/{match_id}")
 def get_match(match_id: str):
-    provider = get_provider_for_match(match_id)
+    try:
+        provider = get_provider_for_match(match_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     match = next((m for m in provider.get_matches() if m.match_id == match_id), None)
     if not match:
         raise HTTPException(status_code=404, detail="Match not found")
@@ -111,7 +114,10 @@ def analyze(req: AnalyzeRequest):
             detail=f"'{req.analysis_type}' not available for match '{req.match_id}'. Available: {available}",
         )
 
-    provider = get_provider_for_match(req.match_id)
+    try:
+        provider = get_provider_for_match(req.match_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     shot_data = provider.get_shot_data(req.match_id)
     match = next((m for m in provider.get_matches() if m.match_id == req.match_id), None)
     match_label = match.label if match else req.match_id
