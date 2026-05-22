@@ -16,6 +16,21 @@ def get_provider_for_match(match_id: str) -> DataProvider:
     raise ValueError(f"Unrecognised match_id prefix: '{match_id}'")
 
 
+def get_cached_match(match_id: str):
+    """Return a match from cache without triggering a full load.
+
+    Returns None if the cache is cold (not yet loaded) or the match
+    isn't found. Safe to call at any time — never blocks.
+    """
+    if match_id.startswith("sb:"):
+        from backend.providers.statsbomb import get_cached_matches
+        cache = get_cached_matches()
+        if cache is None:
+            return None
+        return next((m for m in cache if m.match_id == match_id), None)
+    return None
+
+
 def get_all_matches():
     """Fetch matches from all available providers, merged into one list."""
     from backend.providers.statsbomb import StatsBombProvider

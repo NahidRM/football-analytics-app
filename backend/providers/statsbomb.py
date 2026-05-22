@@ -42,6 +42,15 @@ _COUNTRY = {
 _matches_cache: list[Match] | None = None
 
 
+def get_cached_matches() -> list[Match] | None:
+    """Return the cached match list, or None if it hasn't been loaded yet.
+
+    Unlike get_matches(), this never triggers a fetch — it's purely a
+    cache peek. Used by the API layer to avoid blocking on a cold cache.
+    """
+    return _matches_cache
+
+
 class StatsBombProvider(DataProvider):
     def get_matches(self) -> list[Match]:
         global _matches_cache

@@ -5,16 +5,38 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+import logging
+import threading
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from backend.providers import get_provider_for_match, get_all_matches
+from backend.providers import get_provider_for_match, get_all_matches, get_cached_match
 from backend.providers.base import DataProvider
 from backend.content_generator import generate_content
 from backend.visualizations import get_available_analyses
 
-app = FastAPI(title="The Whiteboard API")
+
+def _preload_matches() -> None:
+    """Warm the match cache in a background thread so the first request is instant."""
+    try:
+        get_all_matches()
+        logging.info("Match cache pre-warmed successfully.")
+    except Exception as exc:
+        logging.warning("Match cache pre-warm failed: %s", exc)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start cache preloading immediately when the server boots — non-blocking.
+    thread = threading.Thread(target=_preload_matches, daemon=True)
+    thread.start()
+    yield
+
+
+app = FastAPI(title="The Whiteboard API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,30 +110,46 @@ def get_match(match_id: str):
         provider = get_provider_for_match(match_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    match = next((m for m in provider.get_matches() if m.match_id == match_id), None)
-    if not match:
-        raise HTTPException(status_code=404, detail="Match not found")
-    shot_data = provider.get_shot_data(match_id)
-    # Fetch lineup to expose player names for the heat map picker
+
+    # --- Lineup (fast: statsbombpy caches per-match on disk) ---
+    # We get home/away team names from the lineup rather than iterating
+    # all 75 competition-seasons — that's the expensive call we're avoiding.
     try:
         lineup = provider.get_lineup(match_id)
         home_players = lineup.home_players
         away_players = lineup.away_players
+        lineup_home = lineup.home_team
+        lineup_away = lineup.away_team
     except Exception:
         home_players = []
         away_players = []
+        lineup_home = ""
+        lineup_away = ""
+
+    # --- Shot data (fast: statsbombpy caches per-match on disk) ---
+    try:
+        shot_data = provider.get_shot_data(match_id)
+    except Exception:
+        shot_data = None
+
+    # --- Match metadata ---
+    # Use the in-memory cache if it's already warm (populated by /matches or
+    # the startup preload). If the cache is cold we fall back to the lineup
+    # team names — the buttons still appear immediately.
+    match = get_cached_match(match_id)
+
     return {
-        "match_id": match.match_id,
-        "label": match.label,
-        "home_team": match.home_team,
-        "away_team": match.away_team,
-        "home_score": match.home_score,
-        "away_score": match.away_score,
-        "date": match.date,
-        "competition": match.competition,
-        "season": match.season,
-        "country": match.country,
-        "is_live": match.is_live,
+        "match_id": match_id,
+        "label": match.label if match else match_id,
+        "home_team": match.home_team if match else lineup_home,
+        "away_team": match.away_team if match else lineup_away,
+        "home_score": match.home_score if match else 0,
+        "away_score": match.away_score if match else 0,
+        "date": match.date if match else "",
+        "competition": match.competition if match else "",
+        "season": match.season if match else "",
+        "country": match.country if match else "",
+        "is_live": match.is_live if match else False,
         "fbref_available": shot_data is not None,
         "available_analyses": get_available_analyses(match_id),
         "home_players": home_players,
