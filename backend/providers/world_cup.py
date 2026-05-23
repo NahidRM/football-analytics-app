@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import re
 import requests
 import warnings
 warnings.filterwarnings("ignore")
@@ -11,8 +12,15 @@ from .base import (
 )
 
 _BASE_URL = "https://v3.football.api-sports.io"
-_WC_LEAGUE_ID = 1
-_WC_SEASON = 2026
+
+_LEAGUES = [
+    {"id": 1,  "season": 2026, "name": "FIFA World Cup 2026",     "is_warmup": False},
+    {"id": 10, "season": 2026, "name": "International Friendlies", "is_warmup": True},
+]
+
+# Matches any team name containing an age group (U17, U20, U21, U23, etc.)
+# Word boundary ensures "Uruguay" is not caught.
+_YOUTH = re.compile(r'\bU\d{2}\b', re.IGNORECASE)
 
 
 class WorldCupProvider(DataProvider):
@@ -42,17 +50,16 @@ class WorldCupProvider(DataProvider):
                     return default
         return default
 
-    def _parse_fixtures(self, fixtures: list[dict]) -> list[Match]:
+    def _parse_fixtures(self, fixtures: list[dict], league: dict) -> list[Match]:
         matches = []
         for f in fixtures:
             fixture = f.get("fixture", {})
             teams = f.get("teams", {})
             goals = f.get("goals", {})
-            league = f.get("league", {})
             label = (
                 f"{teams['home']['name']} {goals.get('home', 0)}–"
                 f"{goals.get('away', 0)} {teams['away']['name']} | "
-                f"{league.get('name', 'World Cup')} {league.get('season', 2026)}"
+                f"{league['name']} {league['season']}"
             )
             matches.append(Match(
                 match_id="apf:" + str(fixture["id"]),
@@ -62,10 +69,11 @@ class WorldCupProvider(DataProvider):
                 home_score=int(goals.get("home") or 0),
                 away_score=int(goals.get("away") or 0),
                 date=str(fixture.get("date", ""))[:10],
-                competition="FIFA World Cup 2026",
-                season="2026",
+                competition=league["name"],
+                season=str(league["season"]),
                 country="International",
                 is_live=True,
+                is_warmup=league["is_warmup"],
             ))
         return matches
 
@@ -122,17 +130,21 @@ class WorldCupProvider(DataProvider):
             return None
 
     def get_matches(self) -> list[Match]:
-        try:
-            data = self._get("fixtures", {"league": _WC_LEAGUE_ID, "season": _WC_SEASON})
-            fixtures = [
-                f for f in data.get("response", [])
-                if f.get("fixture", {}).get("status", {}).get("short") == "FT"
-            ]
-            matches = self._parse_fixtures(fixtures)
-            matches.sort(key=lambda m: m.date, reverse=True)
-            return matches
-        except Exception:
-            return []
+        all_matches = []
+        for league in _LEAGUES:
+            try:
+                data = self._get("fixtures", {"league": league["id"], "season": league["season"]})
+                fixtures = [
+                    f for f in data.get("response", [])
+                    if f.get("fixture", {}).get("status", {}).get("short") == "FT"
+                    and not _YOUTH.search(f.get("teams", {}).get("home", {}).get("name", ""))
+                    and not _YOUTH.search(f.get("teams", {}).get("away", {}).get("name", ""))
+                ]
+                all_matches.extend(self._parse_fixtures(fixtures, league))
+            except Exception as e:
+                logging.warning("Failed to fetch league %s: %s", league["id"], e)
+        all_matches.sort(key=lambda m: m.date, reverse=True)
+        return all_matches
 
     def get_match_stats(self, match_id: str) -> MatchStats:
         stats_data = self._get("fixtures/statistics", {"fixture": match_id.removeprefix("apf:")})

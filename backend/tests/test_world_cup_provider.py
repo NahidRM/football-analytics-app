@@ -1,8 +1,11 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from backend.providers.world_cup import WorldCupProvider
+from backend.providers.world_cup import WorldCupProvider, _YOUTH
 from backend.providers.base import Match, MatchStats, Lineup
 
+
+FAKE_WC_LEAGUE = {"id": 1, "season": 2026, "name": "FIFA World Cup 2026", "is_warmup": False}
+FAKE_FRIENDLY_LEAGUE = {"id": 10, "season": 2026, "name": "International Friendlies", "is_warmup": True}
 
 FAKE_FIXTURES_RESPONSE = {
     "response": [
@@ -54,7 +57,7 @@ FAKE_STATS_RESPONSE = {
 
 def test_parse_matches():
     provider = WorldCupProvider.__new__(WorldCupProvider)
-    matches = provider._parse_fixtures(FAKE_FIXTURES_RESPONSE["response"])
+    matches = provider._parse_fixtures(FAKE_FIXTURES_RESPONSE["response"], FAKE_WC_LEAGUE)
     assert len(matches) == 1
     m = matches[0]
     assert m.match_id == "apf:12345"
@@ -62,6 +65,30 @@ def test_parse_matches():
     assert m.away_team == "Morocco"
     assert m.home_score == 2
     assert m.away_score == 1
+    assert m.is_warmup is False
+    assert m.competition == "FIFA World Cup 2026"
+
+
+def test_parse_warmup_matches():
+    provider = WorldCupProvider.__new__(WorldCupProvider)
+    matches = provider._parse_fixtures(FAKE_FIXTURES_RESPONSE["response"], FAKE_FRIENDLY_LEAGUE)
+    assert len(matches) == 1
+    m = matches[0]
+    assert m.is_warmup is True
+    assert m.competition == "International Friendlies"
+    assert m.is_live is True
+
+
+def test_youth_filter_regex():
+    # These should be blocked
+    assert _YOUTH.search("Hungary U17")
+    assert _YOUTH.search("Tajikistan U20")
+    assert _YOUTH.search("England U21")
+    assert _YOUTH.search("Brazil U23")
+    # These should NOT be blocked
+    assert not _YOUTH.search("Uruguay")
+    assert not _YOUTH.search("France")
+    assert not _YOUTH.search("Mexico")
 
 
 def test_parse_match_stats():
@@ -83,9 +110,8 @@ def test_get_stat_value():
 def test_get_shot_data_returns_none_on_fbref_failure():
     provider = WorldCupProvider.__new__(WorldCupProvider)
     import sys
-    # Temporarily hide soccerdata from sys.modules so the import fails
     original = sys.modules.pop("soccerdata", None)
-    sys.modules["soccerdata"] = None  # type: ignore — forces ImportError on import
+    sys.modules["soccerdata"] = None  # type: ignore
     try:
         result = provider.get_shot_data("apf:12345")
         assert result is None
