@@ -1,4 +1,3 @@
-import pytest
 from backend.visualizations import get_available_analyses
 
 
