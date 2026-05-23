@@ -81,6 +81,7 @@ def list_matches():
             "season": m.season,
             "country": m.country,
             "is_live": m.is_live,
+            "is_warmup": m.is_warmup,
         }
         for m in get_all_matches()
     ]
@@ -150,6 +151,7 @@ def get_match(match_id: str):
         "season": match.season if match else "",
         "country": match.country if match else "",
         "is_live": match.is_live if match else False,
+        "is_warmup": match.is_warmup if match else False,
         "fbref_available": shot_data is not None,
         "available_analyses": get_available_analyses(match_id),
         "home_players": home_players,

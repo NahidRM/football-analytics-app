@@ -16,6 +16,7 @@ class Match:
     season: str = ""
     country: str = ""
     is_live: bool = False
+    is_warmup: bool = False
 
 
 @dataclass

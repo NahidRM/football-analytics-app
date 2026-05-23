@@ -12,6 +12,7 @@ export interface Match {
   season: string;
   country: string;
   is_live: boolean;
+  is_warmup: boolean;
 }
 
 export interface MatchDetail extends Match {
