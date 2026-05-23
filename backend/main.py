@@ -99,6 +99,7 @@ def list_competitions():
                 "season": m.season,
                 "country": m.country,
                 "is_live": m.is_live,
+                "is_warmup": m.is_warmup,
                 "match_count": 0,
             }
         seen[key]["match_count"] += 1
