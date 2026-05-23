@@ -96,6 +96,7 @@ export const api = {
       season: string;
       country: string;
       is_live: boolean;
+      is_warmup: boolean;
       match_count: number;
     }>>("/competitions"),
 

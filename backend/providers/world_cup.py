@@ -18,9 +18,10 @@ _LEAGUES = [
     {"id": 10, "season": 2026, "name": "International Friendlies", "is_warmup": True},
 ]
 
-# Matches any team name containing an age group (U17, U20, U21, U23, etc.)
-# Word boundary ensures "Uruguay" is not caught.
-_YOUTH = re.compile(r'\bU\d{2}\b', re.IGNORECASE)
+# Matches any team name containing an age group (U17, U-17, U20, U-20, etc.)
+# Word boundary ensures "Uruguay" is not caught. Hyphen variant covers some
+# API-Football naming styles (e.g. "England U-21").
+_YOUTH = re.compile(r'\bU-?\d{2}\b', re.IGNORECASE)
 
 
 class WorldCupProvider(DataProvider):
