@@ -72,7 +72,7 @@ class WorldCupProvider(DataProvider):
                 competition=league["name"],
                 season=str(league["season"]),
                 country="International",
-                is_live=True,
+                is_live=True,   # "Live" means current-season provider, not in-progress
                 is_warmup=league["is_warmup"],
             ))
         return matches

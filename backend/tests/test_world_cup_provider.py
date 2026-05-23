@@ -1,7 +1,4 @@
-import pytest
-from unittest.mock import patch, MagicMock
 from backend.providers.world_cup import WorldCupProvider, _YOUTH
-from backend.providers.base import Match, MatchStats, Lineup
 
 
 FAKE_WC_LEAGUE = {"id": 1, "season": 2026, "name": "FIFA World Cup 2026", "is_warmup": False}
@@ -20,7 +17,6 @@ FAKE_FIXTURES_RESPONSE = {
                 "away": {"name": "Morocco"},
             },
             "goals": {"home": 2, "away": 1},
-            "league": {"name": "FIFA World Cup", "season": 2026},
         }
     ]
 }
