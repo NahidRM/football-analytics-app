@@ -35,10 +35,10 @@ export default function MatchSelector({ matches }: Props) {
 
   // Distinct competitions — live first, then alphabetical
   const competitions = useMemo(() => {
-    const map = new Map<string, { competition: string; country: string; is_live: boolean }>();
+    const map = new Map<string, { competition: string; country: string; is_live: boolean; is_warmup: boolean }>();
     for (const m of matches) {
       if (!map.has(m.competition)) {
-        map.set(m.competition, { competition: m.competition, country: m.country, is_live: m.is_live });
+        map.set(m.competition, { competition: m.competition, country: m.country, is_live: m.is_live, is_warmup: m.is_warmup });
       }
     }
     return Array.from(map.values()).sort((a, b) => {
@@ -109,7 +109,10 @@ export default function MatchSelector({ matches }: Props) {
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-white">{c.competition}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-[#e94560] border border-[#e94560] px-1.5 py-0.5 rounded">LIVE</span>
+                  {c.is_warmup
+                    ? <span className="text-[10px] font-bold text-orange-400 border border-orange-400 px-1.5 py-0.5 rounded">WARM-UP</span>
+                    : <span className="text-[10px] font-bold text-[#e94560] border border-[#e94560] px-1.5 py-0.5 rounded">LIVE</span>
+                  }
                 </button>
               ))}
             </div>
