@@ -9,8 +9,6 @@ export async function generateStaticParams() {
   ];
 }
 
-export const dynamicParams = true;
-
 export default function AnalysisPage({
   params,
 }: {
