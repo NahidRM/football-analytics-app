@@ -3,7 +3,7 @@
 # Builds the Next.js frontend first, then starts the FastAPI server.
 
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_20", "python311"]
 
 [phases.install]
 cmds = [
