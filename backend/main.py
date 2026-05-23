@@ -9,9 +9,17 @@ import logging
 import threading
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+# Absolute path to the Next.js static export output directory.
+# Path(__file__) is backend/main.py, so .parent.parent is the repo root.
+_FRONTEND_OUT = Path(__file__).parent.parent / "frontend" / "out"
 
 from backend.providers import get_provider_for_match, get_all_matches, get_cached_match
 from backend.providers.base import DataProvider
@@ -40,8 +48,7 @@ app = FastAPI(title="The Whiteboard API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=["http://localhost:3000"],  # local dev only; production is same-origin
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -61,7 +68,6 @@ class ContentRequest(BaseModel):
     team: str
     match_label: str
     stats_summary: str
-    analysis_id: str | None = None
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -154,7 +160,7 @@ def get_match(match_id: str):
         "is_live": match.is_live if match else False,
         "is_warmup": match.is_warmup if match else False,
         "fbref_available": shot_data is not None,
-        "available_analyses": get_available_analyses(match_id),
+        "available_analyses": get_available_analyses(match_id, fbref_available=shot_data is not None),
         "home_players": home_players,
         "away_players": away_players,
     }
@@ -162,18 +168,18 @@ def get_match(match_id: str):
 
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest):
-    available = get_available_analyses(req.match_id)
+    try:
+        provider = get_provider_for_match(req.match_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    shot_data = provider.get_shot_data(req.match_id)
+    available = get_available_analyses(req.match_id, fbref_available=shot_data is not None)
     if req.analysis_type not in available:
         raise HTTPException(
             status_code=400,
             detail=f"'{req.analysis_type}' not available for match '{req.match_id}'. Available: {available}",
         )
-
-    try:
-        provider = get_provider_for_match(req.match_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    shot_data = provider.get_shot_data(req.match_id)
     match = next((m for m in provider.get_matches() if m.match_id == req.match_id), None)
     match_label = match.label if match else req.match_id
 
@@ -185,32 +191,11 @@ def analyze(req: AnalyzeRequest):
     buf.seek(0)
     image_b64 = base64.b64encode(buf.read()).decode()
 
-    # Persist to Supabase (non-blocking — failure doesn't break the response)
-    analysis_db_id = None
-    try:
-        from backend.db import save_analysis as db_save
-        opponent = ""
-        if match:
-            opponent = match.away_team if match.home_team == req.team else match.home_team
-        saved = db_save({
-            "mode": "sb" if req.match_id.startswith("sb:") else "apf",
-            "match_label": match_label,
-            "team": req.team,
-            "opponent": opponent,
-            "analysis_type": req.analysis_type,
-            "image_base64": image_b64,
-            "stats_summary": stats_summary,
-        })
-        analysis_db_id = saved.get("id")
-    except Exception:
-        pass
-
     return {
         "image_base64": image_b64,
         "stats_summary": stats_summary,
         "match_label": match_label,
         "fbref_available": shot_data is not None,
-        "analysis_id": analysis_db_id,
     }
 
 
@@ -219,40 +204,7 @@ def content(req: ContentRequest):
     newsletter, twitter = generate_content(
         req.analysis_type, req.team, req.match_label, req.stats_summary
     )
-    try:
-        if req.analysis_id:
-            from backend.db import save_draft
-            save_draft(req.analysis_id, newsletter, twitter)
-    except Exception:
-        pass
     return {"newsletter": newsletter, "twitter": twitter}
-
-
-@app.get("/analyses")
-def list_analyses():
-    try:
-        from backend.db import get_analyses
-        return get_analyses()
-    except Exception:
-        return []
-
-
-@app.post("/analyses")
-def save_analysis_endpoint(body: dict):
-    try:
-        from backend.db import save_analysis
-        return save_analysis(body)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/analyses/{analysis_id}/drafts")
-def get_drafts(analysis_id: str):
-    try:
-        from backend.db import get_drafts
-        return get_drafts(analysis_id)
-    except Exception:
-        return []
 
 
 # ── Analysis dispatch ─────────────────────────────────────────────────────────
@@ -328,3 +280,18 @@ def _run_analysis(req: AnalyzeRequest, provider: DataProvider, shot_data, match_
         return fig, f"Total pressures: {len(pressure)}."
 
     raise HTTPException(status_code=400, detail=f"Unknown analysis_type: {t}")
+
+
+# ── Static frontend (production only) ────────────────────────────────────────
+# Only registered when the Next.js build output exists.
+# API routes above are registered first, so they always take priority.
+if _FRONTEND_OUT.exists():
+    app.mount("/_next", StaticFiles(directory=str(_FRONTEND_OUT / "_next")), name="next-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """Serve built frontend files; fall back to index.html for SPA routing."""
+        file_path = _FRONTEND_OUT / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_FRONTEND_OUT / "index.html"))
