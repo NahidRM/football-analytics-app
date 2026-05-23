@@ -1,4 +1,8 @@
+import logging
+
 from backend.providers.base import DataProvider
+
+logger = logging.getLogger(__name__)
 
 
 def get_provider_for_match(match_id: str) -> DataProvider:
@@ -39,6 +43,6 @@ def get_all_matches():
     for Provider in (WorldCupProvider, StatsBombProvider):  # Live first
         try:
             matches.extend(Provider().get_matches())
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Provider %s failed: %s", Provider.__name__, e)
     return matches

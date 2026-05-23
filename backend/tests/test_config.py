@@ -6,11 +6,19 @@ def test_statsbomb_analyses():
     assert "passing_network" in result
     assert "match_stats" not in result
 
-def test_world_cup_analyses():
+def test_world_cup_analyses_without_fbref():
     result = get_available_analyses("apf:1")
     assert "match_stats" in result
     assert "player_ratings" in result
-    assert "xg_timeline" in result
+    assert "xg_timeline" not in result   # hidden when no FBref data
+    assert "passing_network" not in result
+
+
+def test_world_cup_analyses_with_fbref():
+    result = get_available_analyses("apf:1", fbref_available=True)
+    assert "match_stats" in result
+    assert "player_ratings" in result
+    assert "xg_timeline" in result       # shown when FBref data exists
     assert "passing_network" not in result
 
 

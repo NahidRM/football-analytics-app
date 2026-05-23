@@ -6,8 +6,8 @@ from backend.providers.base import MatchStats
 
 _FIG_BG = "#1a1a2e"
 _PLOT_BG = "#16213e"
-_HOME_COLOR = "#e94560"
-_AWAY_COLOR = "#0f3460"
+_HOME_COLOR = "#e94560"   # coral red — clearly distinct on dark background
+_AWAY_COLOR = "#38b6ff"   # sky blue — high contrast against both red and dark bg
 _TEXT = "#e0e0e0"
 _SUBTEXT = "#aaaaaa"
 
@@ -62,8 +62,21 @@ def draw_match_stats(stats: MatchStats, match_label: str) -> plt.Figure:
 
     home_patch = mpatches.Patch(color=_HOME_COLOR, label=stats.home_team)
     away_patch = mpatches.Patch(color=_AWAY_COLOR, label=stats.away_team)
-    fig.legend(handles=[home_patch, away_patch], loc="upper center",
-               ncol=2, frameon=False, labelcolor=_TEXT, fontsize=11)
-    fig.suptitle(f"Match Stats\n{match_label}", color=_TEXT, fontsize=12, y=0.98)
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    fig.legend(
+        handles=[away_patch, home_patch],  # away on left matches left side of bars
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.94),  # pin below the title, in figure coordinates
+        ncol=2,
+        frameon=True,
+        facecolor="#0d1117",   # near-black frame so swatches pop
+        edgecolor="#333355",
+        labelcolor=_TEXT,
+        fontsize=11,
+        handlelength=2.0,
+        handleheight=1.2,
+        borderpad=0.6,
+        columnspacing=2.0,
+    )
+    fig.suptitle(f"Match Stats\n{match_label}", color=_TEXT, fontsize=12, y=0.995)
+    fig.tight_layout(rect=[0, 0, 1, 0.88])  # reserve top 12% for title + legend
     return fig

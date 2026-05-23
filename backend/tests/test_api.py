@@ -56,7 +56,7 @@ def test_get_match_detail(client):
     data = response.json()
     assert data["match_id"] == "apf:123"
     assert data["fbref_available"] is False
-    assert set(data["available_analyses"]) == {"match_stats", "player_ratings", "xg_timeline"}
+    assert set(data["available_analyses"]) == {"match_stats", "player_ratings"}  # xg_timeline only when fbref_available
 
 
 def test_analyze_unknown_type_returns_400(client):
@@ -80,7 +80,3 @@ def test_get_competitions(client):
             assert {"competition", "season", "country", "is_live", "match_count"} <= item.keys()
 
 
-def test_analyses_endpoint_returns_list(client):
-    response = client.get("/analyses")
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)

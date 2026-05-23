@@ -6,8 +6,13 @@ def test_statsbomb_analyses():
     assert set(result) == {"passing_network", "heat_map", "shot_map", "press_map"}
 
 
-def test_world_cup_analyses():
+def test_world_cup_analyses_without_fbref():
     result = get_available_analyses("apf:456")
+    assert set(result) == {"match_stats", "player_ratings"}
+
+
+def test_world_cup_analyses_with_fbref():
+    result = get_available_analyses("apf:456", fbref_available=True)
     assert set(result) == {"match_stats", "player_ratings", "xg_timeline"}
 
 
@@ -18,7 +23,7 @@ def test_unknown_prefix_returns_empty():
 
 def test_all_seven_analysis_types_covered():
     sb_types = set(get_available_analyses("sb:1"))
-    apf_types = set(get_available_analyses("apf:1"))
+    apf_types = set(get_available_analyses("apf:1", fbref_available=True))
     assert sb_types | apf_types == {
         "passing_network", "heat_map", "shot_map", "press_map",
         "match_stats", "player_ratings", "xg_timeline",

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { api, type Match } from "@/lib/api";
 import MatchSelector from "@/components/MatchSelector";
 
@@ -28,14 +27,6 @@ export default async function HomePage() {
         <MatchSelector matches={matches} />
       )}
 
-      <div className="pt-4 border-t border-gray-800">
-        <Link
-          href="/history"
-          className="text-sm text-gray-400 hover:text-gray-200 transition-colors"
-        >
-          View saved analyses →
-        </Link>
-      </div>
     </div>
   );
 }
