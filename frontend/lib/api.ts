@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export interface Match {
   match_id: string;
@@ -27,25 +27,11 @@ export interface AnalyzeResponse {
   stats_summary: string;
   match_label: string;
   fbref_available: boolean;
-  analysis_id: string | null;
 }
 
 export interface ContentResponse {
   newsletter: string;
   twitter: string;
-}
-
-export interface AnalysisRecord {
-  id: string;
-  created_at: string;
-  mode: string;
-  match_label: string;
-  team: string;
-  opponent: string;
-  analysis_type: string;
-  image_base64: string | null;
-  stats_summary: string | null;
-  tags: string[];
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -83,7 +69,6 @@ export const api = {
     team: string;
     match_label: string;
     stats_summary: string;
-    analysis_id?: string | null;
   }) =>
     apiFetch<ContentResponse>("/content", {
       method: "POST",
@@ -100,17 +85,4 @@ export const api = {
       match_count: number;
     }>>("/competitions"),
 
-  getAnalyses: () =>
-    apiFetch<AnalysisRecord[]>("/analyses"),
-
-  saveAnalysis: (body: Partial<AnalysisRecord>) =>
-    apiFetch<AnalysisRecord>("/analyses", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
-
-  getDrafts: (analysisId: string) =>
-    apiFetch<{ newsletter: string; twitter: string }[]>(
-      `/analyses/${analysisId}/drafts`
-    ),
 };
