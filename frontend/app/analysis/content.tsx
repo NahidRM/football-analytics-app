@@ -17,9 +17,13 @@ const ANALYSIS_LABELS: Record<string, string> = {
   xg_timeline: "xG Timeline",
 };
 
-function AnalysisPageContent({ id }: { id: string }) {
+function AnalysisPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // match ID and team now come from search params, not URL path segments.
+  // encodeURIComponent was used when pushing, so decode here.
+  const id = decodeURIComponent(searchParams.get("match") ?? "");
   const team = searchParams.get("team") ?? "";
 
   const [matchDetail, setMatchDetail] = useState<MatchDetail | null>(null);
@@ -33,6 +37,7 @@ function AnalysisPageContent({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!id) return;
     api.getMatch(id).then((m) => {
       setMatchDetail(m);
       setAvailableAnalyses(m.available_analyses);
@@ -107,8 +112,16 @@ function AnalysisPageContent({ id }: { id: string }) {
     ? `Generate ${selectedAnalyses.size} Visualizations`
     : "Generate Visualization";
 
-  // Heat map requires a player — disable Generate if none selected
   const heatMapMissingPlayer = selectedAnalyses.has("heat_map") && !playerName;
+
+  if (!id) {
+    return (
+      <div className="text-gray-400 text-sm">
+        No match selected.{" "}
+        <button onClick={() => router.push("/")} className="underline">Go back home</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-5xl">

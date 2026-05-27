@@ -67,7 +67,9 @@ export default function MatchSelector({ matches }: Props) {
 
   function handleAnalyze() {
     if (!selectedMatch || !team) return;
-    router.push(`/analysis/${selectedMatch.match_id}?team=${encodeURIComponent(team)}`);
+    // Match ID goes in a search param, not a path segment.
+    // Path segments require pre-rendered static files per ID; search params don't.
+    router.push(`/analysis?match=${encodeURIComponent(selectedMatch.match_id)}&team=${encodeURIComponent(team)}`);
   }
 
   function goToCompetition() {

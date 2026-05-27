@@ -146,6 +146,15 @@ def get_match(match_id: str):
     # team names — the buttons still appear immediately.
     match = get_cached_match(match_id)
 
+    # Cache miss for apf: matches — fall back to a live provider lookup.
+    # StatsBomb has a disk cache; WorldCupProvider does not, so we fetch on demand.
+    if match is None and match_id.startswith("apf:"):
+        try:
+            all_provider_matches = get_provider_for_match(match_id).get_matches()
+            match = next((m for m in all_provider_matches if m.match_id == match_id), None)
+        except Exception:
+            pass
+
     return {
         "match_id": match_id,
         "label": match.label if match else match_id,
@@ -183,7 +192,10 @@ def analyze(req: AnalyzeRequest):
     match = next((m for m in provider.get_matches() if m.match_id == req.match_id), None)
     match_label = match.label if match else req.match_id
 
-    fig, stats_summary = _run_analysis(req, provider, shot_data, match_label)
+    try:
+        fig, stats_summary = _run_analysis(req, provider, shot_data, match_label)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
@@ -290,8 +302,24 @@ if _FRONTEND_OUT.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        """Serve built frontend files; fall back to index.html for SPA routing."""
+        """Serve built frontend files; fall back to the correct page shell.
+
+        Next.js static export generates one HTML file per *known* route.
+        Dynamic routes (e.g. /analysis/[id]) only pre-render the IDs listed in
+        generateStaticParams — not every possible match ID.  With the new static
+        /analysis route, any /analysis or /analysis/* request should get the
+        analysis page shell so the client-side JS can read the ?match= search
+        param and fetch the right data.
+        """
         file_path = _FRONTEND_OUT / full_path
         if file_path.is_file():
             return FileResponse(str(file_path))
+        # Analysis routes: serve the analysis page shell (not the home page).
+        # Handles /analysis (with or without ?match=... query params) and any
+        # old /analysis/<id> deep-links that might be bookmarked.
+        # Next.js exports the page as analysis.html (no trailing slash by default).
+        if full_path == "analysis" or full_path.startswith("analysis/"):
+            analysis_html = _FRONTEND_OUT / "analysis.html"
+            if analysis_html.is_file():
+                return FileResponse(str(analysis_html))
         return FileResponse(str(_FRONTEND_OUT / "index.html"))
