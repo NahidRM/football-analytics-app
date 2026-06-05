@@ -127,6 +127,49 @@ def health():
     }
 
 
+@app.get("/debug/apf")
+def debug_apf():
+    """Raw API Football diagnostic — bypasses cache, shows exactly what the API returns."""
+    from backend.providers.world_cup import WorldCupProvider, _LEAGUES, _YOUTH
+    from backend.config import API_FOOTBALL_KEY
+
+    provider = WorldCupProvider()
+    result = {"key_set": bool(API_FOOTBALL_KEY), "key_length": len(API_FOOTBALL_KEY), "leagues": []}
+
+    for league in _LEAGUES:
+        entry: dict = {"league_id": league["id"], "name": league["name"]}
+        try:
+            data = provider._get("fixtures", {"league": league["id"], "season": league["season"]})
+            raw = data.get("response", [])
+            errors = data.get("errors", {})
+            statuses: dict = {}
+            for f in raw:
+                s = f.get("fixture", {}).get("status", {}).get("short", "?")
+                statuses[s] = statuses.get(s, 0) + 1
+            ft = [f for f in raw if f.get("fixture", {}).get("status", {}).get("short") == "FT"]
+            senior = [
+                f for f in ft
+                if not _YOUTH.search(f.get("teams", {}).get("home", {}).get("name", ""))
+                and not _YOUTH.search(f.get("teams", {}).get("away", {}).get("name", ""))
+            ]
+            entry.update({
+                "total_fixtures": len(raw),
+                "status_breakdown": statuses,
+                "ft_fixtures": len(ft),
+                "senior_ft_fixtures": len(senior),
+                "api_errors": errors,
+                "sample": (
+                    f"{senior[0]['teams']['home']['name']} vs {senior[0]['teams']['away']['name']}"
+                    if senior else None
+                ),
+            })
+        except Exception as exc:
+            entry["error"] = str(exc)
+        result["leagues"].append(entry)
+
+    return result
+
+
 @app.get("/matches/{match_id}")
 def get_match(match_id: str):
     try:
