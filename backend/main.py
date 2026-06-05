@@ -130,11 +130,19 @@ def health():
 @app.get("/debug/apf")
 def debug_apf():
     """Raw API Football diagnostic — bypasses cache, shows exactly what the API returns."""
+    import os
     from backend.providers.world_cup import WorldCupProvider, _LEAGUES, _YOUTH
     from backend.config import API_FOOTBALL_KEY
 
+    raw_env = os.environ.get("API_FOOTBALL_KEY", "")
     provider = WorldCupProvider()
-    result = {"key_set": bool(API_FOOTBALL_KEY), "key_length": len(API_FOOTBALL_KEY), "leagues": []}
+    result = {
+        "key_in_os_environ": bool(raw_env),
+        "key_in_config": bool(API_FOOTBALL_KEY),
+        "key_length_environ": len(raw_env),
+        "key_length_config": len(API_FOOTBALL_KEY),
+        "leagues": [],
+    }
 
     for league in _LEAGUES:
         entry: dict = {"league_id": league["id"], "name": league["name"]}
