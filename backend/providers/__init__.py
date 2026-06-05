@@ -1,8 +1,13 @@
 import logging
+import time
 
 from backend.providers.base import DataProvider
 
 logger = logging.getLogger(__name__)
+
+_matches_cache: list | None = None
+_matches_cache_time: float = 0.0
+_CACHE_TTL = 900  # 15 minutes — limits API Football to ~96 calls/day max
 
 
 def get_provider_for_match(match_id: str) -> DataProvider:
@@ -36,7 +41,15 @@ def get_cached_match(match_id: str):
 
 
 def get_all_matches():
-    """Fetch matches from all available providers, merged into one list."""
+    """Fetch matches from all available providers, merged into one list.
+
+    Results are cached for _CACHE_TTL seconds so repeated page loads don't
+    burn through API Football's 100-requests/day free-tier quota.
+    """
+    global _matches_cache, _matches_cache_time
+    if _matches_cache is not None and (time.time() - _matches_cache_time) < _CACHE_TTL:
+        return _matches_cache
+
     from backend.providers.statsbomb import StatsBombProvider
     from backend.providers.world_cup import WorldCupProvider
     matches = []
@@ -45,4 +58,7 @@ def get_all_matches():
             matches.extend(Provider().get_matches())
         except Exception as e:
             logger.exception("Provider %s failed: %s", Provider.__name__, e)
+
+    _matches_cache = matches
+    _matches_cache_time = time.time()
     return matches

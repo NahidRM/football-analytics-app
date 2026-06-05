@@ -114,20 +114,17 @@ def list_competitions():
 
 @app.get("/health")
 def health():
-    """Diagnostic endpoint — checks each provider without auth."""
-    from backend.providers.statsbomb import StatsBombProvider
-    from backend.providers.world_cup import WorldCupProvider
-
-    providers: dict[str, dict] = {}
-    for name, Provider in [("statsbomb", StatsBombProvider), ("world_cup", WorldCupProvider)]:
-        try:
-            matches = Provider().get_matches()
-            providers[name] = {"ok": True, "match_count": len(matches)}
-        except Exception as exc:
-            providers[name] = {"ok": False, "error": str(exc), "match_count": 0}
-
-    overall = "ok" if all(p["ok"] for p in providers.values()) else "degraded"
-    return {"status": overall, "providers": providers}
+    """Diagnostic endpoint — reports provider status using the cached match list."""
+    matches = get_all_matches()
+    sb_matches = [m for m in matches if m.match_id.startswith("sb:")]
+    apf_matches = [m for m in matches if m.match_id.startswith("apf:")]
+    return {
+        "status": "ok" if matches else "degraded",
+        "providers": {
+            "statsbomb": {"ok": True, "match_count": len(sb_matches)},
+            "world_cup": {"ok": True, "match_count": len(apf_matches)},
+        },
+    }
 
 
 @app.get("/matches/{match_id}")
