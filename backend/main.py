@@ -115,6 +115,8 @@ def list_competitions():
 @app.get("/health")
 def health():
     """Diagnostic endpoint — reports provider status using the cached match list."""
+    from backend.providers import _bust_cache
+    _bust_cache()
     matches = get_all_matches()
     sb_matches = [m for m in matches if m.match_id.startswith("sb:")]
     apf_matches = [m for m in matches if m.match_id.startswith("apf:")]

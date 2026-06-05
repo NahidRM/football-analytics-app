@@ -10,6 +10,13 @@ _matches_cache_time: float = 0.0
 _CACHE_TTL = 3600  # 1 hour — keeps API Football calls to ~48/day (free tier is 100)
 
 
+def _bust_cache():
+    """Force the next get_all_matches() call to re-fetch from all providers."""
+    global _matches_cache, _matches_cache_time
+    _matches_cache = None
+    _matches_cache_time = 0.0
+
+
 def get_provider_for_match(match_id: str) -> DataProvider:
     """Route a namespaced match ID to the correct provider.
 
