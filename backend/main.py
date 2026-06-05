@@ -161,14 +161,9 @@ def get_match(match_id: str):
     # team names — the buttons still appear immediately.
     match = get_cached_match(match_id)
 
-    # Cache miss for apf: matches — fall back to a live provider lookup.
-    # StatsBomb has a disk cache; WorldCupProvider does not, so we fetch on demand.
-    if match is None and match_id.startswith("apf:"):
-        try:
-            all_provider_matches = get_provider_for_match(match_id).get_matches()
-            match = next((m for m in all_provider_matches if m.match_id == match_id), None)
-        except Exception:
-            pass
+    # Cache miss — search the shared match cache (avoids a direct API Football call).
+    if match is None:
+        match = next((m for m in get_all_matches() if m.match_id == match_id), None)
 
     return {
         "match_id": match_id,
@@ -204,7 +199,7 @@ def analyze(req: AnalyzeRequest):
             status_code=400,
             detail=f"'{req.analysis_type}' not available for match '{req.match_id}'. Available: {available}",
         )
-    match = next((m for m in provider.get_matches() if m.match_id == req.match_id), None)
+    match = next((m for m in get_all_matches() if m.match_id == req.match_id), None)
     match_label = match.label if match else req.match_id
 
     try:
