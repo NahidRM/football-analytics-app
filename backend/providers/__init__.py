@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 _matches_cache: list | None = None
 _matches_cache_time: float = 0.0
-_CACHE_TTL = 900  # 15 minutes — limits API Football to ~96 calls/day max
+_CACHE_TTL = 3600  # 1 hour — keeps API Football calls to ~48/day (free tier is 100)
 
 
 def get_provider_for_match(match_id: str) -> DataProvider:
