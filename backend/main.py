@@ -112,6 +112,24 @@ def list_competitions():
     return list(seen.values())
 
 
+@app.get("/health")
+def health():
+    """Diagnostic endpoint — checks each provider without auth."""
+    from backend.providers.statsbomb import StatsBombProvider
+    from backend.providers.world_cup import WorldCupProvider
+
+    providers: dict[str, dict] = {}
+    for name, Provider in [("statsbomb", StatsBombProvider), ("world_cup", WorldCupProvider)]:
+        try:
+            matches = Provider().get_matches()
+            providers[name] = {"ok": True, "match_count": len(matches)}
+        except Exception as exc:
+            providers[name] = {"ok": False, "error": str(exc), "match_count": 0}
+
+    overall = "ok" if all(p["ok"] for p in providers.values()) else "degraded"
+    return {"status": overall, "providers": providers}
+
+
 @app.get("/matches/{match_id}")
 def get_match(match_id: str):
     try:
