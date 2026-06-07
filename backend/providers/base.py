@@ -61,6 +61,18 @@ class Shot:
     outcome: str
     x: float
     y: float
+    assisting_player: str = ""
+
+
+@dataclass
+class MatchEvent:
+    minute: int
+    extra_time: int
+    team: str
+    event_type: str  # "Goal", "Card", "subst"
+    player: str
+    detail: str  # "Normal Goal", "Yellow Card", "Red Card", etc.
+    player_in: str = ""  # for substitutions: the player coming on
 
 
 @dataclass
@@ -71,6 +83,10 @@ class Lineup:
     away_formation: str
     home_players: list[str] = field(default_factory=list)
     away_players: list[str] = field(default_factory=list)
+    # Richer player data for pitch card (populated by WorldCupProvider only).
+    # Each dict has keys: name, number, position, grid ("row:col").
+    home_player_details: list[dict] = field(default_factory=list)
+    away_player_details: list[dict] = field(default_factory=list)
 
 
 class DataProvider(ABC):
@@ -90,3 +106,7 @@ class DataProvider(ABC):
 
     @abstractmethod
     def get_lineup(self, match_id: str) -> Lineup: ...
+
+    def get_match_events(self, match_id: str) -> list[MatchEvent]:
+        """Return goals, cards, and substitutions. Override in providers that support it."""
+        return []

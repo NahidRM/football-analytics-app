@@ -15,6 +15,12 @@ const ANALYSIS_LABELS: Record<string, string> = {
   match_stats: "Match Stats",
   player_ratings: "Player Ratings",
   xg_timeline: "xG Timeline",
+  pitch_card: "Pitch Card",
+  match_timeline: "Match Timeline",
+  xg_xa_chart: "xG + xA",
+  xg_vs_goals: "xG vs Goals",
+  ebb_and_flow: "Ebb & Flow",
+  sub_impact: "Sub Impact",
 };
 
 function AnalysisPageContent() {

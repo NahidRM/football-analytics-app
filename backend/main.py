@@ -256,7 +256,7 @@ def analyze(req: AnalyzeRequest):
     match_label = match.label if match else req.match_id
 
     try:
-        fig, stats_summary = _run_analysis(req, provider, shot_data, match_label)
+        fig, stats_summary = _run_analysis(req, provider, shot_data, match_label, match)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -284,7 +284,7 @@ def content(req: ContentRequest):
 
 # ── Analysis dispatch ─────────────────────────────────────────────────────────
 
-def _run_analysis(req: AnalyzeRequest, provider: DataProvider, shot_data, match_label: str):
+def _run_analysis(req: AnalyzeRequest, provider: DataProvider, shot_data, match_label: str, match=None):
     t = req.analysis_type
 
     if t == "match_stats":
@@ -319,6 +319,76 @@ def _run_analysis(req: AnalyzeRequest, provider: DataProvider, shot_data, match_
         home_xg = sum(s.xg for s in shots if s.team == lineup.home_team)
         away_xg = sum(s.xg for s in shots if s.team == lineup.away_team)
         summary = f"{lineup.home_team} xG: {home_xg:.2f}. {lineup.away_team} xG: {away_xg:.2f}."
+        return fig, summary
+
+    if t == "pitch_card":
+        from backend.visualizations.pitch_card import draw_pitch_card
+        player_stats = provider.get_player_stats(req.match_id)
+        lineup = provider.get_lineup(req.match_id)
+        fig = draw_pitch_card(player_stats, lineup, req.team, match_label)
+        team_players = [p for p in player_stats if p.team == req.team]
+        top = max(team_players, key=lambda p: p.rating or 0.0, default=None)
+        summary = f"Formation: {lineup.home_formation if req.team == lineup.home_team else lineup.away_formation}."
+        if top and top.rating:
+            summary += f" Top rated: {top.player_name} ({top.rating:.1f})."
+        return fig, summary
+
+    if t == "match_timeline":
+        from backend.visualizations.match_timeline import draw_match_timeline
+        events = provider.get_match_events(req.match_id)
+        lineup = provider.get_lineup(req.match_id)
+        fig = draw_match_timeline(
+            events, lineup.home_team, lineup.away_team,
+            match.home_score if match else 0, match.away_score if match else 0,
+            match_label,
+        )
+        goals = [e for e in events if e.event_type == "Goal"]
+        summary = f"{len(goals)} goals. " + ", ".join(
+            f"{e.player} {e.minute}' ({e.team})" for e in goals
+        )
+        return fig, summary
+
+    if t == "xg_xa_chart":
+        from backend.visualizations.xg_xa_chart import draw_xg_xa_chart
+        shots = shot_data or []
+        fig = draw_xg_xa_chart(shots, req.team, match_label)
+        total_xg = sum(s.xg for s in shots if s.team == req.team)
+        summary = f"{req.team} total xG: {total_xg:.2f}."
+        return fig, summary
+
+    if t == "xg_vs_goals":
+        from backend.visualizations.xg_vs_goals import draw_xg_vs_goals
+        lineup = provider.get_lineup(req.match_id)
+        shots = shot_data or []
+        home_xg = sum(s.xg for s in shots if s.team == lineup.home_team)
+        away_xg = sum(s.xg for s in shots if s.team == lineup.away_team)
+        fig = draw_xg_vs_goals(
+            lineup.home_team, lineup.away_team,
+            home_xg, away_xg,
+            match.home_score if match else 0, match.away_score if match else 0,
+            match_label,
+        )
+        summary = (
+            f"{lineup.home_team} xG {home_xg:.2f} vs {match.home_score if match else 0} goals. "
+            f"{lineup.away_team} xG {away_xg:.2f} vs {match.away_score if match else 0} goals."
+        )
+        return fig, summary
+
+    if t == "ebb_and_flow":
+        from backend.visualizations.ebb_and_flow import draw_ebb_and_flow
+        lineup = provider.get_lineup(req.match_id)
+        shots = shot_data or []
+        fig = draw_ebb_and_flow(shots, lineup.home_team, lineup.away_team, match_label)
+        summary = f"xG ebb & flow for {lineup.home_team} vs {lineup.away_team}."
+        return fig, summary
+
+    if t == "sub_impact":
+        from backend.visualizations.sub_impact import draw_sub_impact
+        events = provider.get_match_events(req.match_id)
+        shots = shot_data or []
+        fig = draw_sub_impact(shots, events, req.team, match_label)
+        subs = [e for e in events if e.event_type == "subst" and e.team == req.team]
+        summary = f"{req.team} made {len(subs)} substitution(s)."
         return fig, summary
 
     # StatsBomb visualizations — need events DataFrame

@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 from backend.config import API_FOOTBALL_KEY
 from .base import (
     DataProvider, Match, MatchStats, TeamStats,
-    PlayerStat, Shot, Lineup
+    PlayerStat, Shot, Lineup, MatchEvent
 )
 
 _BASE_URL = "https://v3.football.api-sports.io"
@@ -108,7 +108,6 @@ class WorldCupProvider(DataProvider):
         try:
             if df is None or df.empty:
                 return None
-            # Filter to this specific match by team names if match metadata is available
             if match is not None and "squad" in df.columns:
                 teams = {match.home_team, match.away_team}
                 df = df[df["squad"].isin(teams)]
@@ -124,6 +123,7 @@ class WorldCupProvider(DataProvider):
                     outcome=str(row.get("outcome", "")),
                     x=float(row.get("x", 0.0) or 0.0),
                     y=float(row.get("y", 0.0) or 0.0),
+                    assisting_player=str(row.get("sca_1_player", "") or ""),
                 ))
             return shots if shots else None
         except Exception as e:
@@ -208,6 +208,18 @@ class WorldCupProvider(DataProvider):
         def _players(entry: dict) -> list[str]:
             return [p["player"]["name"] for p in entry.get("startXI", [])]
 
+        def _player_details(entry: dict) -> list[dict]:
+            details = []
+            for p in entry.get("startXI", []):
+                pl = p.get("player", {})
+                details.append({
+                    "name": pl.get("name", ""),
+                    "number": pl.get("number") or 0,
+                    "position": pl.get("pos", ""),
+                    "grid": pl.get("grid") or "",
+                })
+            return details
+
         return Lineup(
             home_team=home_entry.get("team", {}).get("name", ""),
             away_team=away_entry.get("team", {}).get("name", ""),
@@ -215,4 +227,26 @@ class WorldCupProvider(DataProvider):
             away_formation=away_entry.get("formation", ""),
             home_players=_players(home_entry),
             away_players=_players(away_entry),
+            home_player_details=_player_details(home_entry),
+            away_player_details=_player_details(away_entry),
         )
+
+    def get_match_events(self, match_id: str) -> list[MatchEvent]:
+        data = self._get("fixtures/events", {"fixture": match_id.removeprefix("apf:")})
+        events = []
+        for e in data.get("response", []):
+            et = e.get("type", "")
+            if et not in ("Goal", "Card", "subst"):
+                continue
+            time = e.get("time", {})
+            events.append(MatchEvent(
+                minute=int(time.get("elapsed") or 0),
+                extra_time=int(time.get("extra") or 0),
+                team=e.get("team", {}).get("name", ""),
+                event_type=et,
+                player=e.get("player", {}).get("name", "") or "",
+                detail=e.get("detail", ""),
+                # For subs, API Football puts the player coming ON in the "assist" field
+                player_in=e.get("assist", {}).get("name", "") or "",
+            ))
+        return events

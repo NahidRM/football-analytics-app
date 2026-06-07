@@ -1,21 +1,19 @@
-# Analysis types available per provider, keyed by match_id prefix.
-# The prefix tells us which provider (and therefore which data model) owns the match.
+# Analysis types always available per provider prefix.
 _ANALYSES_BY_PREFIX = {
     "sb:":  ["passing_network", "heat_map", "shot_map", "press_map"],
-    "apf:": ["match_stats", "player_ratings"],  # xg_timeline added only when FBref data exists
+    "apf:": ["match_stats", "player_ratings", "pitch_card", "match_timeline"],
 }
+
+# Additional analyses unlocked only when FBref shot data is available.
+_FBREF_ANALYSES = ["xg_timeline", "xg_xa_chart", "xg_vs_goals", "ebb_and_flow", "sub_impact"]
 
 
 def get_available_analyses(match_id: str, fbref_available: bool = False) -> list[str]:
-    """Return the analysis types available for a given match.
-
-    fbref_available: pass True only when get_shot_data() returned real data —
-    xg_timeline is only surfaced when there's actually something to plot.
-    """
+    """Return the analysis types available for a given match."""
     for prefix, analyses in _ANALYSES_BY_PREFIX.items():
         if match_id.startswith(prefix):
             result = list(analyses)
             if prefix == "apf:" and fbref_available:
-                result.append("xg_timeline")
+                result.extend(_FBREF_ANALYSES)
             return result
     return []
